@@ -9,10 +9,8 @@ A more detailed view shows the severity of the slopes of streets leading down to
 
 ![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/manhattan_beach.png)
 
-A third image highlights the slopes of roads to the north west of Dodger Stadium including the infamously inclined [Baxter Street]:  
+A third image highlights the slopes of roads to the north west of Dodger Stadium including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):  
 
-
-(https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/)
 ![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/baxter_street.png)
  
  
