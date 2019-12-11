@@ -12,6 +12,7 @@ import operator
 osm_mode = 'otf'
 place = 'Los Angeles County, California, USA'
 data_dir = '../data/'
+osm_fname = 'la_county_hwy_only.osm'
 dem_fname = 'merged.tif'
 out_fname = 'la_county_slopes'
 slope_stat_breaks = [2, 4, 6]
