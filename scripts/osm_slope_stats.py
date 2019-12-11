@@ -41,9 +41,6 @@ def get_point_to_point_dists(edges_df):
     """
 
     tmp_df = edges_df.copy()
-
-    # get euclidean distance between each successive
-    # point of each edge's LineString geometry
     tmp_df['dists'] = tmp_df['coord_pairs'].apply(
         lambda x: np.diag(cdist(x[:-1], x[1:])))
 
@@ -67,9 +64,6 @@ def get_slopes(edges_df):
     """
 
     tmp_df = edges_df.copy()
-
-    # get vertical (z axis) distance between each successive
-    # elevation point from each edge
     tmp_df['z_diffs'] = tmp_df['z_trajectories'].apply(
         lambda x: np.diff(x))
     tmp_df['slopes'] = tmp_df['z_diffs'] / tmp_df['dists']
