@@ -12,7 +12,7 @@ LADOT Analysis Tool Data Prep
 ```
 python osm_slope_stats.py 
 ```
-4. To use a local .osm instead of pulling data from nominatim, you have two options
+4. To use a local .osm instead of pulling OSM data from nominatim on-the-fly, you have two options
    - `python osm_slope_stats.py -m local` to use the local file defined in the header of the script
    - `python osm_slope_stats.py -o <file.osm>` to specify the name of the local file to use at runtime.
 5. The script will then generate ESRI shapefiles of OSM node and edge data with the slope statistics stored in the edges
