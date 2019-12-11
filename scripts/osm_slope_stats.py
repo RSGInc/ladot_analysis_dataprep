@@ -96,12 +96,17 @@ if __name__ == '__main__':
     parser.add_argument(
         '-d', '--data-dir', action='store', dest='data_dir',
         help='path to data directory')
+    parser.add_argument(
+        '-m', '--osm-mode', action='store', dest='mode',
+        help='"local" or "osm"')
 
     options = parser.parse_args()
 
     if options.osm:
         osm_mode = 'local'
         osm_fname = options.osm
+    if options.mode:
+        osm_mode = options.mode
     if options.data_dir:
         data_dir = options.data_dir
 
@@ -121,6 +126,11 @@ if __name__ == '__main__':
     elif osm_mode == 'otf':
         G = ox.graph_from_place(
             place, network_type='all', simplify=False, retain_all=True)
+
+    else:
+        raise ValueError(
+            'Must specify a valid OSM mode. See --help '
+            'for more details.')
     print('Done.')
 
     # simplify the graph topology by removing nodes
