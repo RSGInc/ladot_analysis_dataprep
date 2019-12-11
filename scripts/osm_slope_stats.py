@@ -24,6 +24,21 @@ ox.config(useful_tags_path=default_tags + addtl_tags)
 
 
 def get_point_to_point_dists(edges_df):
+    """
+    Fetches pairwise euclidean distances from a dataframe
+    of network edges containing lists of (x,y) coordinate pairs,
+    each of which corresponds to a point in the LineString
+    geometry of an edge.
+
+    Args:
+        edges_df: a pandas.DataFrame object with a column
+            named 'coord_pairs' containing a list of
+            consecutive (x,y) coordinate pairs.
+
+    Returns:
+        A pandas.Series object with lists of distances as its
+            values.
+    """
 
     tmp_df = edges_df.copy()
 
@@ -36,6 +51,20 @@ def get_point_to_point_dists(edges_df):
 
 
 def get_slopes(edges_df):
+    """
+    Computes slopes along edge segments.
+
+    Using vertical (z-axis) trajectories and lists of edge
+    segment distances, calculates the slope along each segment
+    of a LineString geometry for every edge.
+
+    Args:
+        edges_df: a pandas.DataFrame object with columns
+            named 'z_trajectories' and 'z_dists'.
+
+    Returns:
+        A pandas.Series object with lists of slopes as its values.
+    """
 
     tmp_df = edges_df.copy()
 
@@ -49,6 +78,22 @@ def get_slopes(edges_df):
 
 
 def get_slope_mask(edges_df, lower, upper=None, direction="up"):
+    """
+    Generates an array of booleans that can be used to mask
+    other arrays based on their position relative to user-defined
+    boundaries.
+
+    Args:
+        edges_df: a pandas.DataFrame object with a column
+            named 'slopes' containing a list of edge segment
+            slopes
+        lower: a numeric lower bound to use for filtering slopes
+        upper: a numeric upper bound to use for filtering slopes
+        direction: one of ["up", "down", "undirected"]
+
+    Returns:
+        A pandas.Series of boolean values
+    """
 
     tmp_df = edges_df.copy()
 
