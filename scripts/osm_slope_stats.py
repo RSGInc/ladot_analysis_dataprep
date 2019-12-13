@@ -281,7 +281,7 @@ if __name__ == '__main__':
         '-d', '--dem-mode', action='store', dest='dem_mode',
         help='"local" or "otf"')
     parser.add_argument(
-        '-p', '--place', action='store', dest='dem_mode',
+        '-p', '--place', action='store', dest='place',
         help='valid nominatim place name')
 
     options = parser.parse_args()
@@ -293,6 +293,11 @@ if __name__ == '__main__':
         osm_mode = options.osm_mode
     if options.dem_mode:
         dem_mode = options.dem_mode
+    if options.place:
+        place = options.place
+        place_for_fname_str = place.split(',')[0].replace(' ', '_')
+        dem_fname = '{0}.tif'.format(place_for_fname_str)
+        out_fname = '{0}_slopes'.format(place_for_fname_str)
 
     print('Let get slope statistics for {0} roads!'.format(place))
 
