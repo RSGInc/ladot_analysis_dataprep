@@ -13,41 +13,78 @@ import requests
 import zipfile
 from osgeo import gdal
 from glob import glob
-import urllib.request as request
 import shutil
-from contextlib import closing
+import geopandas as gpd
+from scipy.spatial import cKDTree
 
 
 osm_mode = 'otf'
 dem_mode = 'otf'
-# place = 'Los Angeles County, California, USA'
-place = 'San Francisco, California, United States'
-place_for_fname_str = place.split(',')[0].replace(' ', '_')
+local_infra_data = True
+save_as = 'shp'
 data_dir = '../data/'
-osm_fname = 'la_county_hwy_only.osm'
-dem_fname = '{0}.tif'.format(place_for_fname_str)
-out_fname = '{0}_slopes'.format(place_for_fname_str)
-dem_formattable_path = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/n{0}w{1}/'
+stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
+traffic_signals_fname = 'SignalizedIntersections_forCity/' + \
+    'SignalizedIntersections.shp'
+place = 'Los Angeles County, California, USA'
+# place = 'Beverly Hills, California, United States'
+dem_formattable_path = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/' + \
+    'Elevation/1/TIFF/n{0}w{1}/'
 dem_formattable_fname = 'USGS_1_n{0}w{1}.tif'
 slope_stat_breaks = [2, 4, 6]
 default_tags = ox.settings.useful_tags_path
 addtl_tags = [
     'cycleway', 'cycleway:left', 'cycleway:right', 'bicycle', 'foot', 'access']
 custom_tags = []
-ox.config(useful_tags_path=default_tags + addtl_tags)
+
+ox.config(
+    useful_tags_path=default_tags + addtl_tags,
+    osm_xml_way_tags=ox.settings.useful_tags_path + [
+        'gen_cost_bike:forward:left', 'gen_cost_bike:forward:straight',
+        'gen_cost_bike:forward:right', 'gen_cost_bike:backward:left',
+        'gen_cost_bike:backward:straight', 'gen_cost_bike:backward:right'],
+    all_oneway=True)
+
+# all no duplicate edges!!!!
+ox.settings.bidirectional_network_types = []
 
 
-def get_integer_bbox(nodes_df):
-    min_x = int(np.abs(np.floor(nodes_df['x'].min())))
-    min_y = int(np.abs(np.ceil(nodes_df['y'].min())))
-    max_x = int(np.abs(np.floor(nodes_df['x'].max())))
-    max_y = int(np.abs(np.ceil(nodes_df['y'].max())))
+def get_integer_bbox(nodes_gdf):
+    """
+    Generate absolute value integer lat/lon bounds from a dataframe of
+    OSM nodes
+
+    Args:
+        nodes_gdf: a geopandas.GeoDataFrame object of OSM nodes with columns 'x'
+            and 'y'
+
+    Returns:
+        Tuple of absolute value integer lat/lon bounds.
+    """
+    min_x = int(np.abs(np.floor(nodes_gdf['x'].min())))
+    min_y = int(np.abs(np.ceil(nodes_gdf['y'].min())))
+    max_x = int(np.abs(np.floor(nodes_gdf['x'].max())))
+    max_y = int(np.abs(np.ceil(nodes_gdf['y'].max())))
     return min_x, min_y, max_x, max_y
 
 
 def format_dem_url(
         x, y, dem_formattable_path=dem_formattable_path,
         dem_formattable_fname=dem_formattable_fname):
+    """
+    Construct full url of USGS DEM file.
+
+    Args:
+        x: 2-digit longitude
+        y: 3-digit latitude
+        dem_formattable_path: a generic formattable string defining the
+            path to the DEM data on the USGS server
+        dem_formattable_fname: a generic formattable string defining the
+            endpoint of the DEM files on the USGS server
+
+    Returns:
+        full url of USGS DEM file.
+    """
     formatted_path = dem_formattable_path.format(y, x)
     formatted_fname = dem_formattable_fname.format(y, x)
     full_url = formatted_path + formatted_fname
@@ -55,6 +92,14 @@ def format_dem_url(
 
 
 def download_save_geotiff(url, fname, data_dir=data_dir):
+    """
+    Download USGS GeoTIFF file from url
+
+    Args:
+        url: full url of USGS GeoTIFF file
+        fname: name of geotiff file on disk
+        data_dir: (relative) path to project data directory
+    """
     res = requests.get(url)
     directory = os.path.join(data_dir, 'tmp')
     if not os.path.exists(directory):
@@ -65,6 +110,15 @@ def download_save_geotiff(url, fname, data_dir=data_dir):
 
 
 def download_save_unzip_dem(url, fname, data_dir=data_dir):
+    """
+    Downloads zipped archive of DEM data from USGS and extracts
+    all files to disk
+
+    Args:
+        url: full url of the zipped USGS dem data
+        fname: name of geotiff file on disk
+        data_dir: (relative) path to project data directory
+    """
     res = requests.get(url)
     zipped_fname = os.path.join(data_dir, fname + '.zip')
 
@@ -80,7 +134,15 @@ def download_save_unzip_dem(url, fname, data_dir=data_dir):
     return
 
 
-def convert_adf_to_gtiff(fname, data_dir):
+def convert_adf_to_gtiff(fname, data_dir=data_dir):
+    """
+    Convert ArcGIS binary grid file raster data to geotiff
+
+    Args:
+        fname: name of geotiff file on disk
+        data_dir: (relative) path to project data directory
+
+    """
 
     in_fname = glob(os.path.join(data_dir, fname, '**', 'w001001.adf'))[0]
     src_ds = gdal.Open(in_fname)
@@ -95,6 +157,22 @@ def convert_adf_to_gtiff(fname, data_dir):
 def get_all_dems(
         min_x, min_y, max_x, max_y, dem_formattable_path,
         dem_formattable_fname=dem_formattable_fname):
+    """
+    Download all 1-arc second DEM data needed to cover
+    OSM network bounds
+
+    Args:
+        min_x, min_y, max_x, max_y: min/max x/y integer absolute values
+            of the lat/lon coordinates that define the boundaries
+            of the OSM network
+        dem_formattable_path: a generic formattable string defining the
+            path to the DEM data on the USGS server
+        dem_formattable_fname: a generic formattable string defining the
+            endpoint of the DEM files on the USGS server
+
+    Returns:
+        The number of total files downloaded.
+    """
     abs_min_x = min(min_x, max_x)
     abs_max_x = max(min_x, max_x)
     abs_min_y = min(min_y, max_y)
@@ -120,8 +198,16 @@ def get_all_dems(
     return tot_files
 
 
-def get_mosaic(data_dir, out_fname=dem_fname):
-    all_tif_files = glob(os.path.join(data_dir, '*.tif'))
+def get_mosaic(fname, data_dir=data_dir):
+    """
+    Combine individual GeoTIFFs into a single file
+
+    Args:
+        fname: name of geotiff file on disk
+        data_dir: (relative) path to project data directory
+    """
+    directory = os.path.join(data_dir, 'tmp')
+    all_tif_files = glob(os.path.join(directory, '*.tif'))
     all_tifs = []
     for file in all_tif_files:
         tif = rasterio.open(file)
@@ -133,11 +219,20 @@ def get_mosaic(data_dir, out_fname=dem_fname):
         "width": merged.shape[2],
         "transform": out_trans})
     with rasterio.open(
-            os.path.join(data_dir, 'tmp', out_fname), "w", **out_meta) as dest:
+            os.path.join(data_dir, 'tmp', fname), "w", **out_meta) as dest:
         dest.write(merged)
 
 
-def reproject_geotiff(fname, data_dir):
+def reproject_geotiff(fname, data_dir=data_dir):
+    """
+    Takes a geotiff, reprojects it to epsg:2770, and saves new
+    file to disk
+
+    Args:
+        fname: name of geotiff file on disk
+        data_dir: (relative) path to project data directory
+
+    """
     with rasterio.open(os.path.join(data_dir, 'tmp', fname)) as src:
         dst_crs = 'EPSG:2770'
         transform, width, height = calculate_default_transform(
@@ -165,7 +260,7 @@ def reproject_geotiff(fname, data_dir):
     return
 
 
-def get_point_to_point_dists(edges_df):
+def get_point_to_point_dists(edges_gdf):
     """
     Fetches pairwise euclidean distances from a dataframe
     of network edges containing lists of (x,y) coordinate pairs,
@@ -173,7 +268,7 @@ def get_point_to_point_dists(edges_df):
     geometry of an edge.
 
     Args:
-        edges_df: a pandas.DataFrame object with a column
+        edges_df: a geopandas.GeoDataFrame object with a column
             named 'coord_pairs' containing a list of
             consecutive (x,y) coordinate pairs.
 
@@ -182,14 +277,14 @@ def get_point_to_point_dists(edges_df):
             values.
     """
 
-    tmp_df = edges_df.copy()
+    tmp_df = edges_gdf.copy()
     tmp_df['dists'] = tmp_df['coord_pairs'].apply(
         lambda x: np.diag(cdist(x[:-1], x[1:])))
 
     return tmp_df['dists']
 
 
-def get_slopes(edges_df):
+def get_slopes(edges_gdf):
     """
     Computes slopes along edge segments.
 
@@ -198,14 +293,14 @@ def get_slopes(edges_df):
     of a LineString geometry for every edge.
 
     Args:
-        edges_df: a pandas.DataFrame object with columns
+        edges_df: a geopandas.GeoDataFrame object with columns
             named 'z_trajectories' and 'z_dists'.
 
     Returns:
         A pandas.Series object with lists of slopes as its values.
     """
 
-    tmp_df = edges_df.copy()
+    tmp_df = edges_gdf.copy()
     tmp_df['z_diffs'] = tmp_df['z_trajectories'].apply(
         lambda x: np.diff(x))
     tmp_df['slopes'] = tmp_df['z_diffs'] / tmp_df['dists']
@@ -213,14 +308,14 @@ def get_slopes(edges_df):
     return tmp_df['slopes']
 
 
-def get_slope_mask(edges_df, lower, upper=None, direction="up"):
+def get_slope_mask(edges_gdf, lower, upper=None, direction="up"):
     """
     Generates an array of booleans that can be used to mask
     other arrays based on their position relative to user-defined
     boundaries.
 
     Args:
-        edges_df: a pandas.DataFrame object with a column
+        edges_gdf: a geopandas.GeoDataFrame object with a column
             named 'slopes' containing a list of edge segment
             slopes
         lower: a numeric lower bound to use for filtering slopes
@@ -231,7 +326,7 @@ def get_slope_mask(edges_df, lower, upper=None, direction="up"):
         A pandas.Series of boolean values
     """
 
-    tmp_df = edges_df.copy()
+    tmp_df = edges_gdf.copy()
 
     # convert bounds to percentages
     lower *= 0.01
@@ -266,40 +361,261 @@ def get_slope_mask(edges_df, lower, upper=None, direction="up"):
     return mask
 
 
+def get_nearest_nodes_to_features(nodes_gdf, features_gdf):
+    """
+    Assign traffic control type column to edges, forward and backward.
+
+    Args:
+        nodes_gdf: a geopandas.GeoDataFrame object of OSM nodes
+        features_gdf: a geopandas.GeoDataFrame object
+
+    Returns:
+        array of node indicies
+    """
+    assert nodes_gdf.crs == features_gdf.crs
+    nodes_array = np.array(
+        list(zip(nodes_gdf.geometry.x, nodes_gdf.geometry.y)))
+    features_array = np.array(
+        list(zip(features_gdf.geometry.x, features_gdf.geometry.y)))
+
+    tree = cKDTree(nodes_array)
+    dist, index = tree.query(features_array, k=1)
+    valid_idx = index[~np.isinf(dist)]
+    valid_dist = dist[~np.isinf(dist)]
+    features_gdf['nn'] = valid_idx
+    features_gdf['nn_dist'] = valid_dist
+    nn_idx = features_gdf.groupby('nn')['nn_dist'].idxmin().values
+    nn = features_gdf.iloc[nn_idx]
+    return nodes_gdf.iloc[nn['nn']].index.values
+
+
+def assign_traffic_control(
+        G, nodes_gdf, edges_gdf, data_dir=data_dir,
+        stop_signs_fname=stop_signs_fname,
+        traffic_signals_fname=traffic_signals_fname, local_infra_data=True):
+    """
+    Assign traffic control type column to edges, forward and backward.
+
+    Args:
+        G : networkx multi(di)graph
+        nodes_gdf : geopandas.GeoDataFrame
+            object of OSM nodes with columns 'x' and 'y'
+        edges_gdf : geopandas.GeoDataFrame
+        data_dir : string
+            (relative) path to project data directory
+        stop_signs_fname : string
+            name of stop sign shapefile
+        traffic_signals_fname : string
+            name of traffic signals shapefile
+        local_infra_data : boolean
+            use local infrastructure data
+
+    Returns:
+        edges geopandas.GeoDataFrame
+    """
+
+    nodes = nodes_gdf.copy()
+    edges = edges_gdf.copy()
+    nodes['control_type'] = None
+    nodes['stop'] = False
+    nodes['signal'] = False
+
+    G_simp = ox.simplify_graph(G, strict=False)  # get intersection-only nodes
+    intx, _ = ox.graph_to_gdfs(G_simp)
+    intx = intx.to_crs(epsg=2770)
+
+    non_drive_hwy_types = ox.downloader.get_osm_filter(
+        'drive').split('highway"!~"')[1].split('"')[0].split("|")
+    drive_edges = edges[~edges['highway'].isin(non_drive_hwy_types)]
+    drive_nodes = np.unique(np.concatenate(
+        (drive_edges['u'].unique(), drive_edges['v'].unique())))
+    intx = intx[intx.index.isin(drive_nodes)]  # only nodes on drive network
+
+    if local_infra_data:
+
+        stops_path = os.path.join(data_dir, stop_signs_fname)
+        try:
+            stops = gpd.read_file(stops_path)
+        except OSError:
+            raise OSError(
+                "Couldn't find stop sign data. If you have it, make sure "
+                "it's at {0}. If you don't have any, make sure you run the "
+                "script with the '-i' flag to avoid encountering this error "
+                "again.".format(stops_path))
+        stops = stops.to_crs(epsg=2770)
+        nodes_w_stops = get_nearest_nodes_to_features(intx, stops)
+        nodes.loc[nodes_w_stops, 'stop'] = True
+        nodes.loc[
+            (nodes['stop']) | (nodes['highway'] == 'stop'),
+            'control_type'] = 'stop'
+
+        signals_path = os.path.join(data_dir, traffic_signals_fname)
+        try:
+            signals = gpd.read_file(signals_path)
+        except OSError:
+            raise OSError(
+                "Couldn't find traffic signal data. If you have it, make sure "
+                "it's in {0}. If you don't have any, make sure you run the "
+                "script with the '-i' flag to avoid encountering this error "
+                "again.".format(signals_path))
+        signals = signals.to_crs(epsg=2770)
+        nodes_w_signal = get_nearest_nodes_to_features(intx, signals)
+        nodes.loc[nodes_w_signal, 'signal'] = True
+        nodes.loc[
+            (nodes['signal']) | (nodes['highway'] == 'traffic_signals'),
+            'control_type'] = 'signal'
+
+    else:
+        nodes.loc[nodes['highway'] == 'stop', 'control_type'] = 'stop'
+        nodes.loc[
+            nodes['highway'] == 'traffic_signals', 'control_type'] = 'signal'
+
+    edges['control_type:backward'] = nodes.loc[
+        edges['u'], 'control_type'].values
+    edges['control_type:forward'] = nodes.loc[
+        edges['v'], 'control_type'].values
+
+    return edges
+
+
+def append_gen_cost_bike(edges_gdf):
+    """
+    Generates directional, turn-based generalized costs using slope
+    statistics and infrastructure.
+
+    Args:
+        edges_gdf: a geopandas.GeoDataFrame object with a column
+            named 'slopes' containing a list of edge segment
+
+    Returns:
+        edges_gdf
+    """
+
+    edges_gdf['slope_penalty:forward'] = \
+        (edges_gdf['up_pct_dist_2_4'] * .371) + \
+        (edges_gdf['up_pct_dist_4_6'] * 1.23) + \
+        (edges_gdf['up_pct_dist_6_plus'] * 3.239)
+
+    edges_gdf['slope_penalty:backward'] = \
+        (edges_gdf['down_pct_dist_2_4'] * .371) + \
+        (edges_gdf['down_pct_dist_4_6'] * 1.23) + \
+        (edges_gdf['down_pct_dist_6_plus'] * 3.239)
+
+    edges_gdf['turn_penalty'] = 0.042
+
+    edges_gdf['signal_penalty:forward'] = (
+        edges_gdf['control_type:forward'] == 'signal') * 0.021
+    edges_gdf['signal_penalty:backward'] = (
+        edges_gdf['control_type:backward'] == 'signal') * 0.021
+
+    edges_gdf['stop_sign_penalty:forward'] = (
+        edges_gdf['control_type:forward'] == 'stop') * 0.005
+    edges_gdf['stop_sign_penalty:backward'] = (
+        edges_gdf['control_type:backward'] == 'stop') * 0.005
+
+    if 'cycleway' in edges_gdf.columns:
+        edges_gdf['bike_blvd_penalty:forward'] = (
+            edges_gdf['cycleway'] == 'shared_lane') * -.108
+        edges_gdf['bike_blvd_penalty:backward'] = (
+            edges_gdf['cycleway'] == 'shared_lane') * -.108
+    else:
+        edges_gdf['bike_blvd_penalty:forward'] = 0
+        edges_gdf['bike_blvd_penalty:backward'] = 0
+
+    if 'bicycle' in edges_gdf.columns:
+        edges_gdf['bike_path_penalty:forward'] = (
+            (edges_gdf['highway'] == 'cycleway') | (
+                (edges_gdf['highway'] == 'path') &
+                (edges_gdf['bicycle'] == 'dedicated'))) * -.016
+        edges_gdf['bike_path_penalty:backward'] = (
+            (edges_gdf['highway'] == 'cycleway') | (
+                (edges_gdf['highway'] == 'path') &
+                (edges_gdf['bicycle'] == 'dedicated'))) * -.016
+    else:
+        edges_gdf['bike_path_penalty:forward'] = \
+            edges_gdf['highway'] == 'cycleway'
+        edges_gdf['bike_path_penalty:backward'] = \
+            edges_gdf['highway'] == 'cycleway'
+
+    for direc in ['forward', 'backward']:
+        for turn_type in ['left', 'straight', 'right']:
+            colname = 'gen_cost_bike:' + direc + ':' + turn_type
+
+            # all turn types have slope, stop, and bike infra penalties
+            weights = edges_gdf['slope_penalty:{0}'.format(direc)] + \
+                edges_gdf['stop_sign_penalty:{0}'.format(direc)] + \
+                edges_gdf['bike_blvd_penalty:{0}'.format(direc)] + \
+                edges_gdf['bike_path_penalty:{0}'.format(direc)]
+
+            # left turns: add traffic signal and turn penalties
+            if turn_type == 'left':
+                weights += edges_gdf['signal_penalty:{0}'.format(direc)] + \
+                    edges_gdf['turn_penalty']
+
+            # straight out of link: add signal penalty
+            elif turn_type == 'straight':
+                weights += edges_gdf['signal_penalty:{0}'.format(direc)]
+
+            # right turns: add turn penalty
+            else:
+                weights = weights + edges_gdf['turn_penalty']
+
+            # generalized cost = length + length * weighted penalties
+            edges[colname] = edges_gdf['length'] + \
+                edges_gdf['length'] * weights
+
+    return edges_gdf
+
+
 if __name__ == '__main__':
 
     # ingest command line args
     parser = argparse.ArgumentParser(
         description='Get slope statistics for OSM network')
     parser.add_argument(
-        '-o', '--osm', action='store', dest='osm',
-        help='OSM XML file name')
+        '-o', '--osm-filename', action='store', dest='osm_fname',
+        help='local OSM XML file to use instead of grabbing data on-the-fly')
     parser.add_argument(
-        '-m', '--osm-mode', action='store', dest='osm_mode',
-        help='"local" or "otf"')
-    parser.add_argument(
-        '-d', '--dem-mode', action='store', dest='dem_mode',
-        help='"local" or "otf"')
+        '-d', '--dem-filename', action='store', dest='dem_fname',
+        help='local DEM file to use instead of grabbing data on-the-fly')
     parser.add_argument(
         '-p', '--place', action='store', dest='place',
         help='valid nominatim place name')
+    parser.add_argument(
+        '-s', '--save-as', action='store', dest='save_as',
+        choices=['osm', 'shp'], help='output file type')
+    parser.add_argument(
+        '-i', '--infra-off', action='store_true', dest='infra_off',
+        help='do not use infrastructure in generalized cost calculations')
 
     options = parser.parse_args()
 
-    if options.osm:
-        osm_mode = 'local'
-        osm_fname = options.osm
-    if options.osm_mode:
-        osm_mode = options.osm_mode
-    if options.dem_mode:
-        dem_mode = options.dem_mode
     if options.place:
         place = options.place
-        place_for_fname_str = place.split(',')[0].replace(' ', '_')
-        dem_fname = '{0}.tif'.format(place_for_fname_str)
-        out_fname = '{0}_slopes'.format(place_for_fname_str)
+    place_for_fname_str = place.split(',')[0].replace(' ', '_')
+    osm_fname = '{0}.osm'.format(place_for_fname_str)
+    dem_fname = '{0}.tif'.format(place_for_fname_str)
+    out_fname = '{0}_updated'.format(place_for_fname_str)
 
-    print('Let get slope statistics for {0} roads!'.format(place))
+    if options.osm_fname:
+        osm_mode = 'local'
+        osm_fname = options.osm_fname
+    else:
+        osm_mode = 'otf'
+
+    if options.dem_fname:
+        dem_mode = 'local'
+        dem_fname = options.dem_fname
+    else:
+        dem_mode = 'otf'
+
+    if options.save_as:
+        save_as = options.save_as
+
+    if options.infra_off:
+        local_infra_data = False
+
+    assert ox.settings.all_oneway
 
     # load local osm data
     print('Loading OSM data...')
@@ -308,7 +624,7 @@ if __name__ == '__main__':
         try:
             G = ox.graph_from_file(path, simplify=False, retain_all=True)
         except OSError:
-            print(
+            raise OSError(
                 "Couldn't find file {0}. Use the -d flag "
                 "to specify a different directory if your "
                 "data is somewhere other than '../data/'.".format(path))
@@ -324,21 +640,17 @@ if __name__ == '__main__':
             'for more details.')
     print('Done.')
 
-
     # simplify the graph topology by removing nodes
     # that don't mark intersections. NOTE: the full
     # edge geometries will not change.
     print('Processing the graph...')
-    G = ox.simplify_graph(G, strict=False)
 
-    # Remove edges that OSMnx duplicated when converting
-    # OSM XML to a NetworkX MultiDiGraph
-    H = ox.get_undirected(G)
+    # add edge bearings
+    G = ox.add_edge_bearings(G)
 
     # extract nodes/edges geodataframes and project them
     # into equidistant, meters-based coordinate system
-    nodes, edges = ox.graph_to_gdfs(H)
-    edge_cols = edges.columns
+    nodes, edges = ox.graph_to_gdfs(G)
     nodes.crs = {'init': 'epsg:4326'}
     edges.crs = {'init': 'epsg:4326'}
     edges = edges.to_crs(epsg=2770)
@@ -347,17 +659,25 @@ if __name__ == '__main__':
     edges['coord_pairs'] = edges['geometry'].apply(lambda x: list(x.coords))
     print('Done.')
 
+    # assign traffic signals to intersections
+    print('Assigning traffic control to intersections.')
+    edges = assign_traffic_control(
+        G, nodes, edges, local_infra_data=local_infra_data)
+    print('Done.')
+
     # load elevation data
     if dem_mode == 'otf':
         print('Downloading DEMs from USGS...this might take a while')
         integer_bbox = get_integer_bbox(nodes)
-        num_files = get_all_dems(*integer_bbox, dem_formattable_path, dem_formattable_fname)
+        num_files = get_all_dems(
+            *integer_bbox, dem_formattable_path, dem_formattable_fname)
 
         if num_files > 1:
-            _ = get_mosaic(data_dir, dem_fname)
+            _ = get_mosaic(dem_fname, data_dir)
         else:
             single_file = glob(os.path.join(data_dir, 'tmp', '*.tif'))[0]
-            shutil.copyfile(single_file, os.path.join(data_dir, 'tmp', dem_fname))
+            shutil.copyfile(
+                single_file, os.path.join(data_dir, 'tmp', dem_fname))
         _ = reproject_geotiff(dem_fname, data_dir)
 
     print('Loading the DEM from disk...')
@@ -369,8 +689,6 @@ if __name__ == '__main__':
             "Couldn't find file {0}. Use the -d flag "
             "to specify a different directory if your "
             "data is somewhere other than '../data/'.".format(path))
-
-
 
     # extract elevation trajectories from DEM. This can take a while.
     print(
@@ -439,18 +757,32 @@ if __name__ == '__main__':
         'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
     print('Done.')
 
+    # get generalized costs for bike routing
+    print('Generating generalized costs for bike routing.')
+    edges = append_gen_cost_bike(edges)
+
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs(epsg=4326)
 
-    # turn the edges back to a graph
-    print('Converting edges and nodes back to graph structure.')
-    G = ox.gdfs_to_graph(nodes, edges)
-    print('Done.')
-
-    # save the graph back to disk as shapefile data
-    path = os.path.join(data_dir, out_fname)
-    print('Saving the data to disk at {0}'.format(path))
-    ox.save_graph_shapefile(G, out_fname, data_dir)
+    # if save_as == 'shp':
+    #     # turn the edges back to a graph to save as shapefile
+    #     print('Converting edges and nodes back to graph structure.')
+    #     G = ox.gdfs_to_graph(nodes, edges)
+    #     print('Done.')
+    #     print('Saving graph as shapefile...')
+    #     ox.save_graph_shapefile(G, out_fname, data_dir)
+    #     print('File now available at {0}'.format(
+    #         os.path.join(data_dir, out_fname)))
+    # elif save_as == 'osm':
+    #     print('Saving graph as OSM XML...')
+    #     ox.save_as_osm(
+    #         [nodes, edges], filename=out_fname + '.osm', folder=data_dir)
+    #     print('File now available at {0}'.format(
+    #         os.path.join(data_dir, out_fname + '.osm')))
+    # else:
+    #     raise ValueError(
+    #         "{0} is not a valid output file type. See --help for more "
+    #         "details.".format(save_as))
 
     # clear out the tmp directory
     tmp_files = glob('../data/tmp/*')
