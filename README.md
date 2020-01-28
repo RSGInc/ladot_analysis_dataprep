@@ -2,7 +2,7 @@
 LADOT Analysis Tool Data Prep
 
 ## Slope Computations
-![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png)
+<img src="https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
 
 ### How to
