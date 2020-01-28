@@ -12,15 +12,17 @@ import operator
 import requests
 import zipfile
 from osgeo import gdal
-from glob import glob
+import glob
 import shutil
 import geopandas as gpd
 from scipy.spatial import cKDTree
+import pandas as pd
 
 
 osm_mode = 'otf'
 dem_mode = 'otf'
 local_infra_data = True
+local_volume_data = True
 save_as = 'shp'
 data_dir = '../data/'
 stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
@@ -40,6 +42,8 @@ custom_tags = []
 ox.config(
     useful_tags_path=default_tags + addtl_tags,
     osm_xml_way_tags=ox.settings.useful_tags_path + [
+        'speed_peak:forward', 'speed_offpeak:forward',
+        'speed_peak:backward', 'speed_offpeak:backward',
         'gen_cost_bike:forward:left', 'gen_cost_bike:forward:straight',
         'gen_cost_bike:forward:right', 'gen_cost_bike:backward:left',
         'gen_cost_bike:backward:straight', 'gen_cost_bike:backward:right'],
@@ -55,8 +59,8 @@ def get_integer_bbox(nodes_gdf):
     OSM nodes
 
     Args:
-        nodes_gdf: a geopandas.GeoDataFrame object of OSM nodes with columns 'x'
-            and 'y'
+        nodes_gdf: a geopandas.GeoDataFrame object of OSM nodes with
+            columns 'x' and 'y'
 
     Returns:
         Tuple of absolute value integer lat/lon bounds.
@@ -144,7 +148,7 @@ def convert_adf_to_gtiff(fname, data_dir=data_dir):
 
     """
 
-    in_fname = glob(os.path.join(data_dir, fname, '**', 'w001001.adf'))[0]
+    in_fname = glob.glob(os.path.join(data_dir, fname, '**', 'w001001.adf'))[0]
     src_ds = gdal.Open(in_fname)
     driver = gdal.GetDriverByName("GTiff")
     dst_ds = driver.CreateCopy(data_dir + fname + '.tif', src_ds, 0)
@@ -207,7 +211,7 @@ def get_mosaic(fname, data_dir=data_dir):
         data_dir: (relative) path to project data directory
     """
     directory = os.path.join(data_dir, 'tmp')
-    all_tif_files = glob(os.path.join(directory, '*.tif'))
+    all_tif_files = glob.glob(os.path.join(directory, '*.tif'))
     all_tifs = []
     for file in all_tif_files:
         tif = rasterio.open(file)
@@ -491,6 +495,7 @@ def append_gen_cost_bike(edges_gdf):
         edges_gdf
     """
 
+    # slopes
     edges_gdf['slope_penalty:forward'] = \
         (edges_gdf['up_pct_dist_2_4'] * .371) + \
         (edges_gdf['up_pct_dist_4_6'] * 1.23) + \
@@ -501,18 +506,70 @@ def append_gen_cost_bike(edges_gdf):
         (edges_gdf['down_pct_dist_4_6'] * 1.23) + \
         (edges_gdf['down_pct_dist_6_plus'] * 3.239)
 
+    # turns
     edges_gdf['turn_penalty'] = 0.042
 
+    # traffic volume
+    for direction in ['forward', 'backward']:
+
+        edges_gdf['parallel_traffic_penalty:{0}'.format(direction)] = 0
+        edges_gdf.loc[
+            edges_gdf['parallel_traffic:{0}'.format(direction)] >= 10000,
+            'parallel_traffic_penalty:{0}'.format(direction)] = .091
+        edges_gdf.loc[
+            edges_gdf['parallel_traffic:{0}'.format(direction)] >= 20000,
+            'parallel_traffic_penalty:{0}'.format(direction)] = .231
+
+        edges_gdf['cross_traffic_penalty_ls:{0}'.format(direction)] = 0
+        edges_gdf.loc[
+            edges_gdf['cross_traffic:{0}'.format(direction)] >= 5000,
+            'cross_traffic_penalty_ls:{0}'.format(direction)] = .041
+        edges_gdf.loc[
+            edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000,
+            'cross_traffic_penalty_ls:{0}'.format(direction)] = .059
+        edges_gdf.loc[
+            edges_gdf['cross_traffic:{0}'.format(direction)] >= 20000,
+            'cross_traffic_penalty_ls:{0}'.format(direction)] = .322
+
+        edges_gdf['cross_traffic_penalty_r:{0}'.format(direction)] = 0
+        edges_gdf.loc[
+            edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000,
+            'cross_traffic_penalty_r:{0}'.format(direction)] = .038
+
+    # traffic signals
     edges_gdf['signal_penalty:forward'] = (
         edges_gdf['control_type:forward'] == 'signal') * 0.021
     edges_gdf['signal_penalty:backward'] = (
         edges_gdf['control_type:backward'] == 'signal') * 0.021
 
+    # stop signs
     edges_gdf['stop_sign_penalty:forward'] = (
         edges_gdf['control_type:forward'] == 'stop') * 0.005
     edges_gdf['stop_sign_penalty:backward'] = (
         edges_gdf['control_type:backward'] == 'stop') * 0.005
 
+    # no bike lane
+    edges_gdf['no_bike_penalty'] = 0
+    edges_gdf.loc[
+        (edges_gdf['aadt'] >= 10000) &
+        (
+            (pd.isnull(edges_gdf['cycleway'])) |
+            (edges_gdf['cycleway'] == 'no') |
+            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 0.368
+    edges_gdf.loc[
+        (edges_gdf['aadt'] >= 20000) &
+        (
+            (pd.isnull(edges_gdf['cycleway'])) |
+            (edges_gdf['cycleway'] == 'no') |
+            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 1.4
+    edges_gdf.loc[
+        (edges_gdf['aadt'] >= 30000) &
+        (
+            (pd.isnull(edges_gdf['cycleway'])) |
+            (edges_gdf['cycleway'] == 'no') |
+            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 7.157
+
+    # bike blvd
     if 'cycleway' in edges_gdf.columns:
         edges_gdf['bike_blvd_penalty:forward'] = (
             edges_gdf['cycleway'] == 'shared_lane') * -.108
@@ -522,6 +579,7 @@ def append_gen_cost_bike(edges_gdf):
         edges_gdf['bike_blvd_penalty:forward'] = 0
         edges_gdf['bike_blvd_penalty:backward'] = 0
 
+    # bike path
     if 'bicycle' in edges_gdf.columns:
         edges_gdf['bike_path_penalty:forward'] = (
             (edges_gdf['highway'] == 'cycleway') | (
@@ -537,6 +595,7 @@ def append_gen_cost_bike(edges_gdf):
         edges_gdf['bike_path_penalty:backward'] = \
             edges_gdf['highway'] == 'cycleway'
 
+    # compute costs
     for direc in ['forward', 'backward']:
         for turn_type in ['left', 'straight', 'right']:
             colname = 'gen_cost_bike:' + direc + ':' + turn_type
@@ -544,25 +603,129 @@ def append_gen_cost_bike(edges_gdf):
             # all turn types have slope, stop, and bike infra penalties
             weights = edges_gdf['slope_penalty:{0}'.format(direc)] + \
                 edges_gdf['stop_sign_penalty:{0}'.format(direc)] + \
+                edges_gdf['no_bike_penalty'] + \
                 edges_gdf['bike_blvd_penalty:{0}'.format(direc)] + \
                 edges_gdf['bike_path_penalty:{0}'.format(direc)]
 
-            # left turns: add traffic signal and turn penalties
+            # left turns: add traffic signal, turn penalties, parallel traffic,
+            # and cross traffic for left turn
             if turn_type == 'left':
                 weights += edges_gdf['signal_penalty:{0}'.format(direc)] + \
-                    edges_gdf['turn_penalty']
+                    edges_gdf['turn_penalty'] + \
+                    edges_gdf['parallel_traffic_penalty:{0}'.format(direc)] + \
+                    edges_gdf['cross_traffic_penalty_ls:{0}'.format(direc)]
 
-            # straight out of link: add signal penalty
+            # straight out of link: add signal penalty, cross traffic for
+            # straight, no bike lane penalty
+
             elif turn_type == 'straight':
-                weights += edges_gdf['signal_penalty:{0}'.format(direc)]
+                weights += edges_gdf['signal_penalty:{0}'.format(direc)] + \
+                    edges_gdf['cross_traffic_penalty_ls:{0}'.format(direc)]
 
-            # right turns: add turn penalty
+            # right turns: add turn penalty, cross traffic for right turn
             else:
-                weights = weights + edges_gdf['turn_penalty']
+                weights = weights + edges_gdf['turn_penalty'] + \
+                    edges_gdf['cross_traffic_penalty_r:{0}'.format(direc)]
 
             # generalized cost = length + length * weighted penalties
             edges[colname] = edges_gdf['length'] + \
                 edges_gdf['length'] * weights
+
+    return edges_gdf
+
+
+def get_speeds_and_volumes(data_dir):
+
+    df = pd.DataFrame()
+
+    for f in glob.glob(os.path.join(
+            data_dir,
+            'Big Data/OneDrive_1_1-27-2020/StreetLight_OSM_Primary' +
+            'Roads_AtoB/*/*sa_all.csv'), recursive=True):
+        tmp = pd.read_csv(f)
+        df = pd.concat((df, tmp), ignore_index=True)
+    df['direction'] = 'forward'
+
+    for f in glob.glob(os.path.join(
+            data_dir,
+            'Big Data/OneDrive_1_1-27-2020/StreetLight_OSM_Primary' +
+            'Roads_BtoA/*/*sa_all.csv'), recursive=True):
+        tmp = pd.read_csv(f)
+        tmp['direction'] = 'backward'
+        df = pd.concat((df, tmp), ignore_index=True)
+
+    df = df[df['Day Type'] == '1: Weekday (M-Th)']
+    speed_pivot = df[[
+        'Zone ID', 'Day Part', 'Average Daily Segment Traffic (StL Volume)',
+        'direction']].set_index(['Zone ID', 'direction', 'Day Part']).unstack()
+    speed_pivot['speed_tod'] = '2: Peak AM (6am-10am)'
+    speed_pivot.loc[speed_pivot[
+        (
+            'Average Daily Segment Traffic (StL Volume)',
+            '2: Peak AM (6am-10am)')] < speed_pivot[
+        (
+            'Average Daily Segment Traffic (StL Volume)',
+            '4: Peak PM (3pm-7pm)')], 'speed_tod'] = '4: Peak PM (3pm-7pm)'
+    speed_pivot = speed_pivot.reset_index()
+    peak_speeds = pd.merge(
+        df, speed_pivot[['Zone ID', 'direction', 'speed_tod']],
+        left_on=['Zone ID', 'direction', 'Day Part'],
+        right_on=['Zone ID', 'direction', 'speed_tod'])
+    peak_speeds = peak_speeds[[
+        'Zone ID', 'direction', 'Avg Segment Speed (mph)']]
+    peak_speeds.rename(
+        columns={'Avg Segment Speed (mph)': 'speed'}, inplace=True)
+    off_peak_speeds = df.loc[
+        df['Day Part'] == '3: Mid-Day (10am-3pm)',
+        ['Zone ID', 'direction', 'Avg Segment Speed (mph)']]
+    off_peak_speeds.rename(
+        columns={'Avg Segment Speed (mph)': 'speed'}, inplace=True)
+    speeds = pd.merge(
+        peak_speeds, off_peak_speeds,
+        on=['Zone ID', 'direction'], suffixes=('_peak', '_offpeak'))
+    aadt = df[df['Day Part'] == '0: All Day (12am-12am)']
+    aadt = df.groupby('Zone ID').agg(aadt=(
+        'Average Daily Segment Traffic (StL Volume)', 'sum')).reset_index()
+
+    return speeds, aadt
+
+
+def process_volumes(edges_gdf, edges_w_vol):
+
+    edges_gdf['bearing:forward'] = edges_gdf['bearing'].values
+    edges_gdf['bearing:backward'] = (edges_gdf['bearing'].values + 180) % 360
+
+    for i, edge in tqdm(edges_gdf.iterrows(), total=len(edges_gdf)):
+
+        node_directions = {'forward': 'v', 'backward': 'u'}
+        for direction, node in node_directions.items():
+
+            vols = edges_w_vol[(
+                (edges_w_vol['u'] == edge[node]) |
+                (edges_w_vol['v'] == edge[node])) &
+                (edges_w_vol.index.values != i)]  # ignore the self-edge
+
+            if len(vols) > 0:
+
+                # bearing of other edges must be relative to flow out of the
+                # intersection, so flip the bearing of the other edges if they
+                # flow *towards* the reference edge
+                vols.loc[vols[node] == edge[node], 'bearing'] = \
+                    (vols.loc[vols[node] == edge[node], 'bearing'] + 180) % 360
+
+                vols['bearing_diff'] = np.abs(
+                    edge['bearing:{0}'.format(direction)] -
+                    vols['bearing'].values)
+                edges_gdf.loc[i, 'cross_traffic:{0}'.format(direction)] = \
+                    vols.loc[
+                        (vols['bearing_diff'] >= 30) &
+                        (vols['bearing_diff'] <= 330),
+                        'aadt'].sum() / 2
+                edges_gdf.loc[i, 'parallel_traffic:{0}'.format(direction)] = \
+                    vols.loc[
+                        (vols['bearing_diff'] < 30) |
+                        (vols['bearing_diff'] > 330),
+                        'aadt'].sum() / 2
 
     return edges_gdf
 
@@ -587,6 +750,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '-i', '--infra-off', action='store_true', dest='infra_off',
         help='do not use infrastructure in generalized cost calculations')
+    parser.add_argument(
+        '-v', '--volume-off', action='store_true', dest='volume_off',
+        help='do not use traffic volumes in generalized cost calculations')
 
     options = parser.parse_args()
 
@@ -614,6 +780,9 @@ if __name__ == '__main__':
 
     if options.infra_off:
         local_infra_data = False
+
+    if options.volume_off:
+        local_volume_data = False
 
     assert ox.settings.all_oneway
 
@@ -658,6 +827,51 @@ if __name__ == '__main__':
     # process the geometries to perform calculations
     edges['coord_pairs'] = edges['geometry'].apply(lambda x: list(x.coords))
     print('Done.')
+
+    # load speed and volume data
+    print('Loading speed and traffic volume data')
+    if local_volume_data:
+        speeds, aadt = get_speeds_and_volumes(data_dir)
+        edges = pd.merge(
+            edges, aadt, left_on='osmid', right_on='Zone ID', how='left')
+        edges = pd.merge(
+            edges[[col for col in edges.columns if col != 'Zone ID']],
+            speeds[speeds['direction'] == 'forward'],
+            left_on='osmid', right_on='Zone ID', how='left')
+        edges = pd.merge(
+            edges[[col for col in edges.columns if col not in [
+                'Zone ID', 'direction']]],
+            speeds[speeds['direction'] == 'backward'],
+            left_on='osmid', right_on='Zone ID', how='left',
+            suffixes=(':forward', ':backward'))
+
+        # process volume data
+        edges_w_vol = edges[~pd.isnull(edges['aadt'])]
+        nodes_w_vol = np.unique(np.concatenate((
+            edges_w_vol['u'].unique(), edges_w_vol['v'].unique())))
+        edges['cross_traffic:forward'] = 0
+        edges['parallel_traffic:forward'] = 0
+        edges['cross_traffic:backward'] = 0
+        edges['parallel_traffic:backward'] = 0
+        edges_to_compute = edges[
+            (edges['u'].isin(nodes_w_vol)) | (edges['v'].isin(nodes_w_vol))]
+        edges_to_compute = process_volumes(edges_to_compute, edges_w_vol)
+        edges.loc[edges_to_compute.index, 'cross_traffic:forward'] = \
+            edges_to_compute['cross_traffic:forward']
+        edges.loc[edges_to_compute.index, 'parallel_traffic:forward'] = \
+            edges_to_compute['parallel_traffic:forward']
+        edges.loc[edges_to_compute.index, 'cross_traffic:backward'] = \
+            edges_to_compute['cross_traffic:backward']
+        edges.loc[edges_to_compute.index, 'parallel_traffic:forward'] = \
+            edges_to_compute['parallel_traffic:forward']
+
+    else:
+        for col in [
+                'aadt', 'speed_peak:forward', 'speed_peak:backward',
+                'speed_offpeak:forward', 'speed_offpeak:backward',
+                'cross_traffic:forward', 'cross_traffic:backward',
+                'parallel_traffic:forward', 'parallel_traffic:backward']:
+            edges[col] = None
 
     # assign traffic signals to intersections
     print('Assigning traffic control to intersections.')
@@ -764,25 +978,39 @@ if __name__ == '__main__':
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs(epsg=4326)
 
-    # if save_as == 'shp':
-    #     # turn the edges back to a graph to save as shapefile
-    #     print('Converting edges and nodes back to graph structure.')
-    #     G = ox.gdfs_to_graph(nodes, edges)
-    #     print('Done.')
-    #     print('Saving graph as shapefile...')
-    #     ox.save_graph_shapefile(G, out_fname, data_dir)
-    #     print('File now available at {0}'.format(
-    #         os.path.join(data_dir, out_fname)))
-    # elif save_as == 'osm':
-    #     print('Saving graph as OSM XML...')
-    #     ox.save_as_osm(
-    #         [nodes, edges], filename=out_fname + '.osm', folder=data_dir)
-    #     print('File now available at {0}'.format(
-    #         os.path.join(data_dir, out_fname + '.osm')))
-    # else:
-    #     raise ValueError(
-    #         "{0} is not a valid output file type. See --help for more "
-    #         "details.".format(save_as))
+    if save_as == 'shp':
+        # turn the edges back to a graph to save as shapefile
+        print('Converting edges and nodes back to graph structure.')
+        G = ox.gdfs_to_graph(nodes, edges)
+        print('Done.')
+        print('Saving graph as shapefile...')
+        nodes.gdf_name = 'nodes'
+        ox.save_gdf_shapefile(nodes, 'nodes', data_dir + out_fname)
+        edges.gdf_name = 'edges'
+        ox.save_gdf_shapefile(edges[[
+            col for col in ox.settings.osm_xml_way_tags] + [
+            'slope_penalty:forward', 'slope_penalty:backward',
+            'no_bike_penalty', 'parallel_traffic_penalty:forward',
+            'parallel_traffic_penalty:backward',
+            'cross_traffic_penalty_ls:forward',
+            'cross_traffic_penalty_ls:backward',
+            'cross_traffic_penalty_r:forward',
+            'bike_path_penalty:forward', 'bike_path_penalty:backward',
+            'bike_blvd_penalty:forward', 'bike_blvd_penalty:backward',
+            'signal_penalty:forward', 'signal_penalty:backward',
+            'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
+            'geometry']], 'edges', data_dir + out_fname)
+    elif save_as == 'osm':
+        print('Saving graph as OSM XML...')
+        ox.save_as_osm(
+            [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
+            merge_edges=False)
+        print('File now available at {0}'.format(
+            os.path.join(data_dir, out_fname + '.osm')))
+    else:
+        raise ValueError(
+            "{0} is not a valid output file type. See --help for more "
+            "details.".format(save_as))
 
     # clear out the tmp directory
     tmp_files = glob('../data/tmp/*')
