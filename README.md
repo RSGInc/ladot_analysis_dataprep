@@ -83,6 +83,15 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 
 <sup>*</sup>Variable weights are derived from Broach (2016) commute-based weights
 
+|Generalized Cost	| Formula|
+|--|--|
+|gen_cost_bike:forward:left | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:forward + turn_penalty + no_bike_penalty + parallel_traffic_penalty + cross_traffic_penalty_ls:forward) |
+|gen_cost_bike:forward:straight | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:forward  + no_bike_penalty + cross_traffic_penalty_ls:forward) |
+|gen_cost_bike:forward:right | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty  + no_bike_penalty + cross_traffic_penalty_r:forward) |
+|gen_cost_bike:backward:left | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + turn_penalty + no_bike_penalty + parallel_traffic_penalty + cross_traffic_penalty_ls:backward) |
+|gen_cost_bike:backward:straight | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + no_bike_penalty + cross_traffic_penalty_ls:backward) |
+|gen_cost_bike:backward:right | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty + no_bike_penalty + cross_traffic_penalty_r:backward) |
+
 ## Slope Computations
 <img src="https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
