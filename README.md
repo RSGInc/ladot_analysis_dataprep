@@ -9,6 +9,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    - stop signs
    - traffic signalization
    - bikeways
+   - crosswalks
    - traffic volume and speed data
 3. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
 4. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
