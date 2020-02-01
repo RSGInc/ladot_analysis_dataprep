@@ -47,7 +47,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    python osm_generalized_costs.py -s shp
    ```
 
-<sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If your filenames are different from those specified at the top of the script, you can edit them manually there.
+<sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If you do want to use local data but your filenames are different from those specified at the top of the script, you can edit them manually there.
 
 ## Generalized Costs Calculations
 ### Bicycle
