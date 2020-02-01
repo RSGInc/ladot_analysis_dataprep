@@ -13,7 +13,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 3. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
 4. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
    ```
-   python osm_slope_stats.py 
+   python osm_generalized_costs.py 
    ```
 4. To use a local .osm instead of pulling OSM data from nominatim on-the-fly, you can use the `-o` flag:
    ```
