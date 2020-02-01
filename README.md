@@ -23,7 +23,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    ```
    python osm_generalized_costs.py -o <your_dem_file.tif>
    ```
-7. The script will then generate an OSM XML file with the computed attributes stored as new XML tags. The following new tags are created by default:
+7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
    - gen_cost_bike:forward:left 
    - gen_cost_bike:forward:straight 
    - gen_cost_bike:forward:right 
