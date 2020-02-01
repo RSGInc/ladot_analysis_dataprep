@@ -5,7 +5,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 
 ## How to
 1. Clone/download this repository.
-2. Copy local data files<sup>**</sup> into the data directory, including:
+2. Copy local data files<sup>&dagger;</sup> into the data directory, including:
    - stop signs
    - traffic signalization
    - bikeways
@@ -47,7 +47,7 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    python osm_generalized_costs.py -s shp
    ```
 
-<sup>**</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If your filenames are different from those specified at the top of the script, you can edit them manually there.
+<sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If your filenames are different from those specified at the top of the script, you can edit them manually there.
 
 ## Slope Computations
 <img src="https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png" width=70%>
