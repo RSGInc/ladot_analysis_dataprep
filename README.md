@@ -36,10 +36,10 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    - gen_cost_ped:backward:left 
    - gen_cost_ped:backward:straight 
    - gen_cost_ped:backward:right
-   - speed:forward:peak
-   - speed:forward:offpeak
-   - speed:backward:peak
-   - speed:backward:offpeak
+   - speed_peak:forward
+   - speed_offpeak:forward
+   - speed_peak:backward
+   - speed_offpeak:backward
    - aadt
 
 8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
