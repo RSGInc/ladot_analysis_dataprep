@@ -25,23 +25,23 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    python osm_generalized_costs.py -o <your_dem_file.tif>
    ```
 7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
-   - gen_cost_bike:forward:left 
-   - gen_cost_bike:forward:straight 
-   - gen_cost_bike:forward:right 
-   - gen_cost_bike:backward:left 
-   - gen_cost_bike:backward:straight 
-   - gen_cost_bike:backward:right 
-   - gen_cost_ped:forward:left 
-   - gen_cost_ped:forward:straight 
-   - gen_cost_ped:forward:right 
-   - gen_cost_ped:backward:left 
-   - gen_cost_ped:backward:straight 
-   - gen_cost_ped:backward:right
-   - speed_peak:forward
-   - speed_offpeak:forward
-   - speed_peak:backward
-   - speed_offpeak:backward
-   - aadt
+   - `gen_cost_bike:forward:left`
+   - `gen_cost_bike:forward:straight`
+   - `gen_cost_bike:forward:right`
+   - `gen_cost_bike:backward:left`
+   - `gen_cost_bike:backward:straight`
+   - `gen_cost_bike:backward:right`
+   - `gen_cost_ped:forward:left`
+   - `gen_cost_ped:forward:straight`
+   - `gen_cost_ped:forward:right`
+   - `gen_cost_ped:backward:left`
+   - `gen_cost_ped:backward:straight`
+   - `gen_cost_ped:backward:right`
+   - `speed_peak:forward`
+   - `speed_offpeak:forward`
+   - `speed_peak:backward`
+   - `speed_offpeak:backward`
+   - `aadt`
 
 8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
    ```
