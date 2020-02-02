@@ -93,6 +93,39 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 |gen_cost_bike:backward:straight | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + no_bike_penalty + cross_traffic_penalty_ls:backward) |
 |gen_cost_bike:backward:right | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty + no_bike_penalty + cross_traffic_penalty_r:backward) |
 
+
+### Pedestrian
+|Length Adjusted Metric|	Weight<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
+|--|--|--|--|--|--|
+prop upslope 10%+ | 0.99 | forward | left, straight, right | ped_slope_penalty:forward | 
+prop downslope 10%+ | 0.99 | backward | left, straight, right | ped_slope_penalty:backward | 
+unpaved or alleyway | 0.51 | forward, backward | left, straight, right | unpaved_alley_penalty | OSM: highway="alley" OR surface="unpaved"
+busy street | 0.14 | forward, backward | left, straight, right | busy_penalty | OSM: highway=('tertiary' OR 'tertiary_link' OR 'secondary' OR 'secondary_link' OR 'primary' OR 'primary_link' OR 'trunk' OR 'trunk_link' OR 'motorway' OR 'motorway_link'
+neighborhood commercial | -0.28 | forward, backward | left, straight, right | nbd_penalty | 
+
+|Fixed Distance Metric|	Addt'l Distance (m)<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
+|--|--|--|--|--|--|
+turn | 54 | forward, backward | left, right | turn_penalty | 
+unsignalized arterial crossing | 73 | forward | left, right | unsig_art_xing_penalty_lr:forward | ((13000 <= parallel traffic AADT <= 23000) OR (13000 <= self-edge AADT <= 23000)) AND (unsignalized)
+unsignalized arterial crossing | 73 | forward | straight | unsig_art_xing_penalty_s:forward | (13000 <= cross traffic AADT <= 23000) AND (unsignalized)
+unsignalized arterial crossing | 73 | backward | left, right | unsig_art_xing_penalty_lr:backward | ((13000 <= parallel traffic AADT <= 23000) OR (13000 <= self-edge AADT <= 23000)) AND (unsignalized)
+unsignalized arterial crossing | 73 | backward | straight | unsig_art_xing_penalty_s:backward | (13000 <= cross traffic AADT <= 23000) AND (unsignalized)
+collector crossing w/o crosswalk | 28 | forward | left, right | unmarked_coll_xing_penalty_lr:forward | ((10000 <= parallel traffic AADT < 13000) OR (10000 <= self-edge AADT < 13000)) AND (no crosswalk)
+collector crossing w/o crosswalk | 28 | forward | straight | unmarked_coll_xing_penalty_s:forward | (10000 <= cross traffic AADT < 13000) AND (no crosswalk)
+collector crossing w/o crosswalk | 28 | backward | left, right | unmarked_coll_xing_penalty_lr:backward | ((10000 <= parallel traffic AADT < 13000) OR (10000 <= self-edge AADT < 13000)) AND (no crosswalk)
+collector crossing w/o crosswalk | 28 | backward | straight | unmarked_coll_xing_penalty_s:backward | (10000 <= cross traffic AADT < 13000) AND (no crosswalk)
+
+<sup>*</sup>Variable weights and distances are derived from Broach (2016) commute-based weights
+
+|Generalized Cost	| Formula|
+|--|--|
+|gen_cost_ped:forward:left | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:forward + unmarked_coll_xing_lr:forward)|
+|gen_cost_ped:forward:straight | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_s:forward + unmarked_coll_xing_s:forward)|
+|gen_cost_ped:forward:right | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:forward + unmarked_coll_xing_lr:forward)|
+|gen_cost_ped:backward:left | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
+|gen_cost_ped:backward:straight | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_s:backward + unmarked_coll_xing_s:backward)|
+|gen_cost_ped:backward:right | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
+
 ## Slope Computations
 <img src="https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
