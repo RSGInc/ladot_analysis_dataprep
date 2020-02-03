@@ -23,30 +23,37 @@ osm_mode = 'otf'
 dem_mode = 'otf'
 local_infra_data = True
 local_volume_data = True
-save_as = 'shp'
+save_as = 'osm'
 data_dir = '../data/'
 stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
+xwalk_fname = 'Crosswalks/Crosswalks.shp'
 traffic_signals_fname = 'SignalizedIntersections_forCity/' + \
     'SignalizedIntersections.shp'
+bikeways_fname = 'Bikeways_As_of_7302019/Bikeways_7302019.shp'
 place = 'Los Angeles County, California, USA'
-# place = 'Beverly Hills, California, United States'
 dem_formattable_path = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/' + \
     'Elevation/1/TIFF/n{0}w{1}/'
 dem_formattable_fname = 'USGS_1_n{0}w{1}.tif'
-slope_stat_breaks = [2, 4, 6]
+slope_stat_breaks = [[2, 4, 6], [10]]
 default_tags = ox.settings.useful_tags_path
 addtl_tags = [
-    'cycleway', 'cycleway:left', 'cycleway:right', 'bicycle', 'foot', 'access']
-custom_tags = []
+    'cycleway', 'cycleway:left', 'cycleway:right', 'bicycle', 'foot',
+    'surface']
+custom_tags = [
+    'aadt', 'speed_peak:forward', 'speed_offpeak:forward',
+    'speed_peak:backward', 'speed_offpeak:backward',
+    'gen_cost_bike:forward:left', 'gen_cost_bike:forward:straight',
+    'gen_cost_bike:forward:right', 'gen_cost_bike:backward:left',
+    'gen_cost_bike:backward:straight', 'gen_cost_bike:backward:right',
+    'gen_cost_ped:forward:left', 'gen_cost_ped:forward:straight',
+    'gen_cost_ped:forward:right', 'gen_cost_ped:backward:left',
+    'gen_cost_ped:backward:straight', 'gen_cost_ped:backward:right']
+all_edge_tags = [
+    tag for tag in default_tags if tag != 'est_width'] + addtl_tags
 
 ox.config(
-    useful_tags_path=default_tags + addtl_tags,
-    osm_xml_way_tags=ox.settings.useful_tags_path + [
-        'speed_peak:forward', 'speed_offpeak:forward',
-        'speed_peak:backward', 'speed_offpeak:backward',
-        'gen_cost_bike:forward:left', 'gen_cost_bike:forward:straight',
-        'gen_cost_bike:forward:right', 'gen_cost_bike:backward:left',
-        'gen_cost_bike:backward:straight', 'gen_cost_bike:backward:right'],
+    useful_tags_path=all_edge_tags,
+    osm_xml_way_tags=all_edge_tags + custom_tags,
     all_oneway=True)
 
 # all no duplicate edges!!!!
@@ -72,9 +79,7 @@ def get_integer_bbox(nodes_gdf):
     return min_x, min_y, max_x, max_y
 
 
-def format_dem_url(
-        x, y, dem_formattable_path=dem_formattable_path,
-        dem_formattable_fname=dem_formattable_fname):
+def format_dem_url(x, y, dem_formattable_path=dem_formattable_path, dem_formattable_fname=dem_formattable_fname):
     """
     Construct full url of USGS DEM file.
 
@@ -158,9 +163,7 @@ def convert_adf_to_gtiff(fname, data_dir=data_dir):
     return
 
 
-def get_all_dems(
-        min_x, min_y, max_x, max_y, dem_formattable_path,
-        dem_formattable_fname=dem_formattable_fname):
+def get_all_dems(min_x, min_y, max_x, max_y, dem_formattable_path, dem_formattable_fname=dem_formattable_fname):
     """
     Download all 1-arc second DEM data needed to cover
     OSM network bounds
@@ -382,21 +385,28 @@ def get_nearest_nodes_to_features(nodes_gdf, features_gdf):
     features_array = np.array(
         list(zip(features_gdf.geometry.x, features_gdf.geometry.y)))
 
+    # nodes, e.g. intersections
     tree = cKDTree(nodes_array)
+
+    # nearest node (e.g. intersection) to each feature (e.g. stop sign)
     dist, index = tree.query(features_array, k=1)
     valid_idx = index[~np.isinf(dist)]
     valid_dist = dist[~np.isinf(dist)]
     features_gdf['nn'] = valid_idx
     features_gdf['nn_dist'] = valid_dist
+
+    # retain only those node assignments where feature is the closest feature
+    # to a node (one-to-one)
     nn_idx = features_gdf.groupby('nn')['nn_dist'].idxmin().values
-    nn = features_gdf.iloc[nn_idx]
-    return nodes_gdf.iloc[nn['nn']].index.values
+    nn = features_gdf.loc[nn_idx]
+
+    # return indices of nodes (e.g. intersections) that are the closest node
+    # to a feature
+    result = nodes_gdf.iloc[nn['nn']].index.values
+    return result
 
 
-def assign_traffic_control(
-        G, nodes_gdf, edges_gdf, data_dir=data_dir,
-        stop_signs_fname=stop_signs_fname,
-        traffic_signals_fname=traffic_signals_fname, local_infra_data=True):
+def assign_traffic_control(G, nodes_gdf, edges_gdf, data_dir=data_dir, stop_signs_fname=stop_signs_fname, traffic_signals_fname=traffic_signals_fname, local_infra_data=True):
     """
     Assign traffic control type column to edges, forward and backward.
 
@@ -417,7 +427,6 @@ def assign_traffic_control(
     Returns:
         edges geopandas.GeoDataFrame
     """
-
     nodes = nodes_gdf.copy()
     edges = edges_gdf.copy()
     nodes['control_type'] = None
@@ -474,10 +483,223 @@ def assign_traffic_control(
         nodes.loc[
             nodes['highway'] == 'traffic_signals', 'control_type'] = 'signal'
 
-    edges['control_type:backward'] = nodes.loc[
+    edges['control_type:backward'] = None
+    edges.loc[:, 'control_type:backward'] = nodes.loc[
         edges['u'], 'control_type'].values
-    edges['control_type:forward'] = nodes.loc[
+    edges['control_type:forward'] = None
+    edges.loc[:, 'control_type:forward'] = nodes.loc[
         edges['v'], 'control_type'].values
+
+    return edges
+
+
+def assign_bike_infra(edges_gdf, local_infra_data=True):
+
+    if local_infra_data:
+
+        # load bike infra shapefile
+        bikeways_path = os.path.join(data_dir, bikeways_fname)
+        bikeways = gpd.read_file(bikeways_path)
+        if bikeways.crs != edges_gdf.crs:
+            bikeways = bikeways.to_crs(edges_gdf.crs)
+
+        # extract points from lines
+        bikeways['points'] = bikeways['geometry'].apply(
+            lambda x: [x.interpolate(i, normalized=True) for i in [
+                0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
+
+        # store in a new dataframe
+        bike_points = pd.DataFrame()
+        for i, row in bikeways.iterrows():
+            for geom in row['points']:
+                tmp = pd.DataFrame({
+                    'more_bike_infra': [row['Bikeway']],
+                    'OBJECTID_1': [row['OBJECTID_1']],
+                    'geometry': [geom]})
+                bike_points = pd.concat((bike_points, tmp), ignore_index=True)
+
+        bike_points = gpd.GeoDataFrame(bike_points, geometry='geometry')
+        bike_points.crs = bikeways.crs
+
+        # create bounding 4m bounding box for each point
+        offset = 4
+        bbox = bike_points.bounds + [-offset, -offset, offset, offset]
+
+        # intersect bounding boxes with edges and retain edges indices
+        hits = bbox.apply(
+            lambda row: list(edges_gdf.sindex.intersection(row)), axis=1)
+        tmp = pd.DataFrame({
+            # index of points table
+            "pt_idx": np.repeat(hits.index, hits.apply(len)),
+            # ordinal position of line - access via iloc later
+            "line_i": np.concatenate(hits.values)
+        })
+
+        # merge back geometries to the table of intersections
+        tmp = tmp.join(edges_gdf.reset_index(drop=True), on="line_i")
+        tmp = tmp.join(
+            bike_points[['more_bike_infra', 'geometry']].rename(
+                columns={'geometry': 'point'}), on="pt_idx")
+        tmp = gpd.GeoDataFrame(tmp, geometry="geometry", crs=bike_points.crs)
+
+        # retain only the nearest edge to edge point
+        tmp["snap_dist"] = tmp.geometry.distance(gpd.GeoSeries(tmp.point))
+        tmp = tmp.sort_values(by=["snap_dist"])
+        closest = tmp.groupby("pt_idx").first()
+        bike_infra = closest.groupby('line_i').agg(
+            count=('more_bike_infra', 'count'),
+            mode=('more_bike_infra', pd.Series.mode))
+        bike_infra['mode'] = bike_infra['mode'].apply(
+            lambda x: x if isinstance(x, str) else x[0])
+
+        # retain edges only if they intersected with more than one point
+        bike_infra = bike_infra[bike_infra['count'] > 1]
+
+        # merge back to the main edges table
+        edges_gdf.loc[:, 'more_bike_infra'] = None
+        edges_gdf.loc[
+            bike_infra.index, 'more_bike_infra'] = bike_infra['mode'].values
+
+        bike_points.to_file(os.path.join(data_dir, "bike_points"))
+
+    else:
+        edges_gdf.loc[:, 'more_bike_infra'] = None
+
+    edges_gdf['bike_infra'] = None
+
+    if ('cycleway' in edges_gdf.columns) & ('bicycle' in edges_gdf.columns):
+        # no bike lane
+        edges_gdf.loc[
+            (pd.isnull(edges_gdf['cycleway'])) |
+            (edges_gdf['cycleway'] == 'no') |
+            (edges_gdf['bicycle'] == 'no') &
+            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
+
+        # shared lane
+        edges_gdf.loc[
+            (edges_gdf['cycleway'].str.contains('shared')) |
+            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            'bike_infra'] = 'blvd'
+
+        # bike path
+        edges_gdf.loc[
+            (edges_gdf['highway'] == 'cycleway') |
+            (
+                (edges_gdf['highway'] == 'path') &
+                (edges_gdf['bicycle'] == 'dedicated')
+            ) |
+            (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
+
+    elif 'cycleway' in edges_gdf.columns:
+        # no bike lane
+        edges_gdf.loc[
+            (pd.isnull(edges_gdf['cycleway'])) |
+            (edges_gdf['cycleway'] == 'no') &
+            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
+
+        # shared lane
+        edges_gdf.loc[
+            (edges_gdf['cycleway'].str.contains('shared')) |
+            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            'bike_infra'] = 'blvd'
+
+        # bike path
+        edges_gdf.loc[
+            (edges_gdf['highway'] == 'cycleway') |
+            (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
+
+    elif 'bicycle' in edges_gdf.columns:
+        # no bike lane
+        edges_gdf.loc[
+            (edges_gdf['bicycle'] == 'no') &
+            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
+
+        # shared lane
+        edges_gdf.loc[
+            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            'bike_infra'] = 'blvd'
+
+        # bike path
+        edges_gdf.loc[
+            (edges_gdf['highway'] == 'cycleway') |
+            (
+                (edges_gdf['highway'] == 'path') &
+                (edges_gdf['bicycle'] == 'dedicated')
+            ) |
+            (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
+
+    else:
+        # no bike lane
+        edges_gdf.loc[
+            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
+
+        # shared lane
+        edges_gdf.loc[
+            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            'bike_infra'] = 'blvd'
+
+        # bike path
+        edges_gdf.loc[
+            (edges_gdf['highway'] == 'cycleway') |
+            (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
+
+    return edges_gdf
+
+
+def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwalk_fname, local_infra_data=True):
+    nodes = nodes_gdf.copy()
+    edges = edges_gdf.copy()
+    nodes['xwalk'] = None
+
+    G_simp = ox.simplify_graph(G, strict=False)  # get intersection-only nodes
+    intx, _ = ox.graph_to_gdfs(G_simp)
+    intx = intx.to_crs(epsg=2770)
+
+    non_drive_hwy_types = ox.downloader.get_osm_filter(
+        'drive').split('highway"!~"')[1].split('"')[0].split("|")
+    drive_edges = edges[~edges['highway'].isin(non_drive_hwy_types)]
+    drive_nodes = np.unique(np.concatenate(
+        (drive_edges['u'].unique(), drive_edges['v'].unique())))
+    intx = intx[intx.index.isin(drive_nodes)]  # only nodes on drive network
+
+    if local_infra_data:
+
+        xwalk_path = os.path.join(data_dir, xwalk_fname)
+        try:
+            xwalks = gpd.read_file(xwalk_path)
+        except OSError:
+            raise OSError(
+                "Couldn't find cross walk data. If you have it, make sure "
+                "it's at {0}. If you don't have any, make sure you run the "
+                "script with the '-i' flag to avoid encountering this error "
+                "again.".format(stops_path))
+        xwalks = xwalks.to_crs(epsg=2770)
+
+        # signalized crosswalks
+        nodes_w_sig_xwalks = get_nearest_nodes_to_features(
+            intx, xwalks[xwalks['CrossType'].isin([
+                'White Controlled Crosswalk', 'Yellow Controlled Crosswalk'])])
+        nodes.loc[nodes_w_sig_xwalks, 'xwalk'] = 'signal'
+
+        # unsignalized crosswalks
+        nodes_w_unsig_xwalks = get_nearest_nodes_to_features(
+            intx, xwalks[
+                (~pd.isnull(xwalks['CrossType'])) &
+                (xwalks['CrossType'].str.contains('Uncontrolled'))])
+        nodes.loc[nodes_w_sig_xwalks, 'xwalk'] = 'unsig'
+        nodes.loc[
+            (~pd.isnull(nodes['highway'])) &
+            (nodes['highway'].str.contains('crossing')), 'xwalk'] = 'unsig'
+
+    else:
+
+        # assume all crosswalks are unsignalized
+        nodes.loc[nodes['highway'].str.contains('crossing'), 'xwalk'] = 'unsig'
+
+    edges['xwalk:backward'] = None
+    edges.loc[:, 'xwalk:backward'] = nodes.loc[edges['u'], 'xwalk'].values
+    edges['xwalk:forward'] = None
+    edges.loc[:, 'xwalk:forward'] = nodes.loc[edges['v'], 'xwalk'].values
 
     return edges
 
@@ -509,31 +731,37 @@ def append_gen_cost_bike(edges_gdf):
     # turns
     edges_gdf['turn_penalty'] = 0.042
 
-    # traffic volume
+    # traffic volume at unsignalized intersections
     for direction in ['forward', 'backward']:
 
         edges_gdf['parallel_traffic_penalty:{0}'.format(direction)] = 0
         edges_gdf.loc[
-            edges_gdf['parallel_traffic:{0}'.format(direction)] >= 10000,
+            (edges_gdf['parallel_traffic:{0}'.format(direction)] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'parallel_traffic_penalty:{0}'.format(direction)] = .091
         edges_gdf.loc[
-            edges_gdf['parallel_traffic:{0}'.format(direction)] >= 20000,
+            (edges_gdf['parallel_traffic:{0}'.format(direction)] >= 20000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'parallel_traffic_penalty:{0}'.format(direction)] = .231
 
         edges_gdf['cross_traffic_penalty_ls:{0}'.format(direction)] = 0
         edges_gdf.loc[
-            edges_gdf['cross_traffic:{0}'.format(direction)] >= 5000,
+            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 5000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'cross_traffic_penalty_ls:{0}'.format(direction)] = .041
         edges_gdf.loc[
-            edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000,
+            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'cross_traffic_penalty_ls:{0}'.format(direction)] = .059
         edges_gdf.loc[
-            edges_gdf['cross_traffic:{0}'.format(direction)] >= 20000,
+            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 20000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'cross_traffic_penalty_ls:{0}'.format(direction)] = .322
 
         edges_gdf['cross_traffic_penalty_r:{0}'.format(direction)] = 0
         edges_gdf.loc[
-            edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000,
+            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
             'cross_traffic_penalty_r:{0}'.format(direction)] = .038
 
     # traffic signals
@@ -552,48 +780,23 @@ def append_gen_cost_bike(edges_gdf):
     edges_gdf['no_bike_penalty'] = 0
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 10000) &
-        (
-            (pd.isnull(edges_gdf['cycleway'])) |
-            (edges_gdf['cycleway'] == 'no') |
-            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 0.368
+        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 0.368
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 20000) &
-        (
-            (pd.isnull(edges_gdf['cycleway'])) |
-            (edges_gdf['cycleway'] == 'no') |
-            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 1.4
+        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 1.4
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 30000) &
-        (
-            (pd.isnull(edges_gdf['cycleway'])) |
-            (edges_gdf['cycleway'] == 'no') |
-            (edges_gdf['bicycle'] == 'no')), 'no_bike_penalty'] = 7.157
+        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 7.157
 
     # bike blvd
-    if 'cycleway' in edges_gdf.columns:
-        edges_gdf['bike_blvd_penalty:forward'] = (
-            edges_gdf['cycleway'] == 'shared_lane') * -.108
-        edges_gdf['bike_blvd_penalty:backward'] = (
-            edges_gdf['cycleway'] == 'shared_lane') * -.108
-    else:
-        edges_gdf['bike_blvd_penalty:forward'] = 0
-        edges_gdf['bike_blvd_penalty:backward'] = 0
+    edges_gdf['bike_blvd_penalty'] = 0
+    edges_gdf['bike_blvd_penalty'] = (
+        edges_gdf['bike_infra'] == 'blvd') * -.108
 
     # bike path
-    if 'bicycle' in edges_gdf.columns:
-        edges_gdf['bike_path_penalty:forward'] = (
-            (edges_gdf['highway'] == 'cycleway') | (
-                (edges_gdf['highway'] == 'path') &
-                (edges_gdf['bicycle'] == 'dedicated'))) * -.016
-        edges_gdf['bike_path_penalty:backward'] = (
-            (edges_gdf['highway'] == 'cycleway') | (
-                (edges_gdf['highway'] == 'path') &
-                (edges_gdf['bicycle'] == 'dedicated'))) * -.016
-    else:
-        edges_gdf['bike_path_penalty:forward'] = \
-            edges_gdf['highway'] == 'cycleway'
-        edges_gdf['bike_path_penalty:backward'] = \
-            edges_gdf['highway'] == 'cycleway'
+    edges_gdf['bike_path_penalty'] = 0
+    edges_gdf['bike_path_penalty'] = (
+        edges_gdf['bike_infra'] == 'path') * -.016
 
     # compute costs
     for direc in ['forward', 'backward']:
@@ -604,8 +807,8 @@ def append_gen_cost_bike(edges_gdf):
             weights = edges_gdf['slope_penalty:{0}'.format(direc)] + \
                 edges_gdf['stop_sign_penalty:{0}'.format(direc)] + \
                 edges_gdf['no_bike_penalty'] + \
-                edges_gdf['bike_blvd_penalty:{0}'.format(direc)] + \
-                edges_gdf['bike_path_penalty:{0}'.format(direc)]
+                edges_gdf['bike_blvd_penalty'] + \
+                edges_gdf['bike_path_penalty']
 
             # left turns: add traffic signal, turn penalties, parallel traffic,
             # and cross traffic for left turn
@@ -628,8 +831,127 @@ def append_gen_cost_bike(edges_gdf):
                     edges_gdf['cross_traffic_penalty_r:{0}'.format(direc)]
 
             # generalized cost = length + length * weighted penalties
-            edges[colname] = edges_gdf['length'] + \
+            edges_gdf[colname] = edges_gdf['length'] + \
                 edges_gdf['length'] * weights
+
+    return edges_gdf
+
+
+def append_gen_cost_ped(edges_gdf):
+    edges_gdf['ped_slope_penalty:forward'] = \
+        edges_gdf['up_pct_dist_10_plus'] * .99
+    edges_gdf['ped_slope_penalty:backward'] = \
+        edges_gdf['down_pct_dist_10_plus'] * .99
+    edges_gdf['unpaved_alley_penalty'] = (
+        (edges_gdf['highway'] == 'alley') |
+        (edges_gdf['surface'] == 'unpaved')) * .51
+    edges_gdf['busy_penalty'] = (
+        edges_gdf['highway'].isin([
+            'tertiary', 'tertiary_link', 'secondary', 'secondary_link',
+            'primary', 'primary_link', 'trunk', 'trunk_link',
+            'motorway', 'motorway_link'])) * .14
+
+    for direc in ['forward', 'backward']:
+
+        # if left or right turn, then the pedestrian will have to cross
+        # either the self-edge or the parallel edge. If either of these
+        # edges have aadt between 13k and 23k and the intersection is
+        # unsignalized, apply the fixed penalty for unsignalized
+        # arterial crossings
+        edges_gdf.loc[:, 'unsig_art_xing_penalty_lr:{0}'.format(direc)] = ((
+            (
+                (edges_gdf[
+                    'parallel_traffic:{0}'.format(direc)] >= 13000) &
+                (edges_gdf[
+                    'parallel_traffic:{0}'.format(direc)] <= 23000)
+            ) |
+            (
+                (edges_gdf['aadt'] >= 13000) &
+                (edges_gdf['aadt'] <= 23000)
+            )) &
+            (edges_gdf['control_type:{0}'.format(direc)] != 'signal') &
+            (edges_gdf['xwalk:{0}'.format(direc)] != 'signal')) * 73
+
+        # if left or right turn, then the pedestrian will have to cross
+        # either the self-edge or the parallel edge. If either of these
+        # edges have aadt between 10k and 13k and there is no
+        # crosswalk, apply the fixed penalty for unmarked collector
+        # crossings
+        edges_gdf.loc[
+            :, 'unmarked_coll_xing_penalty_lr:{0}'.format(direc)] = ((
+                (
+                    (edges_gdf[
+                        'parallel_traffic:{0}'.format(direc)] >= 10000) &
+                    (edges_gdf[
+                        'parallel_traffic:{0}'.format(direc)] < 13000)
+                ) |
+                (
+                    (edges_gdf['aadt'] >= 10000) &
+                    (edges_gdf['aadt'] <= 13000)
+                )) &
+                (pd.isnull(edges_gdf['xwalk:{0}'.format(direc)]))) * 28
+
+        # if straight through, then the pedestrian will have to cross
+        # the cross traffic edges. If cross traffic aadt is between
+        # 13k and 23k and the intersection is unsignalized,
+        # apply the fixed penalty for unsignalized arterial crossings
+        edges_gdf.loc[:, 'unsig_art_xing_penalty_s:{0}'.format(direc)] = (
+            (
+                (edges_gdf[
+                    'cross_traffic:{0}'.format(direc)] >= 13000) &
+                (edges_gdf[
+                    'cross_traffic:{0}'.format(direc)] <= 23000)) &
+            (edges_gdf['control_type:{0}'.format(direc)] != 'signal') &
+            (edges_gdf['xwalk:{0}'.format(direc)] != 'signal')) * 73
+
+        # if straight through, then the pedestrian will have to cross
+        # the cross traffic edges. If cross traffic aadt is between
+        # 10k and 13k and there is no crosswalk, apply the fixed
+        # penalty for unmarked collector crossings
+        edges_gdf.loc[:, 'unmarked_coll_xing_penalty_s:{0}'.format(direc)] = (
+            (
+                (edges_gdf[
+                    'cross_traffic:{0}'.format(direc)] >= 10000) &
+                (edges_gdf[
+                    'cross_traffic:{0}'.format(direc)] < 13000)
+            ) &
+            (pd.isnull(edges_gdf['xwalk:{0}'.format(direc)]))) * 28
+
+    for direc in ['forward', 'backward']:
+        for turn_type in ['left', 'straight', 'right']:
+            colname = 'gen_cost_ped:' + direc + ':' + turn_type
+
+            # all turn types have slope, stop, and bike infra penalties
+            weighted_length = (
+                edges_gdf['ped_slope_penalty:{0}'.format(direc)] +
+                edges_gdf['unpaved_alley_penalty'] +
+                edges_gdf['busy_penalty']) * edges_gdf['length']
+
+            if turn_type != 'straight':
+
+                # fixed turn cost
+                weighted_length += 54
+
+                # unsignalized arterial crossing
+                weighted_length += edges_gdf[
+                    'unsig_art_xing_penalty_lr:{0}'.format(direc)]
+
+                # unmarked collector crossing
+                weighted_length += edges_gdf[
+                    'unmarked_coll_xing_penalty_lr:{0}'.format(direc)]
+
+            else:
+
+                # unsignalized arterial crossing
+                weighted_length += edges_gdf[
+                    'unsig_art_xing_penalty_s:{0}'.format(direc)]
+
+                # unmarked collector crossing
+                weighted_length += edges_gdf[
+                    'unmarked_coll_xing_penalty_s:{0}'.format(direc)]
+
+            # generalized cost = length + weighted length
+            edges_gdf[colname] = edges_gdf['length'] + weighted_length
 
     return edges_gdf
 
@@ -761,7 +1083,7 @@ if __name__ == '__main__':
     place_for_fname_str = place.split(',')[0].replace(' ', '_')
     osm_fname = '{0}.osm'.format(place_for_fname_str)
     dem_fname = '{0}.tif'.format(place_for_fname_str)
-    out_fname = '{0}_updated'.format(place_for_fname_str)
+    out_fname = '{0}'.format(place_for_fname_str)
 
     if options.osm_fname:
         osm_mode = 'local'
@@ -879,6 +1201,17 @@ if __name__ == '__main__':
         G, nodes, edges, local_infra_data=local_infra_data)
     print('Done.')
 
+    # assign bike infrastructure designations
+    print('Assigning bicycle infrastructure designations.')
+    edges = assign_bike_infra(edges, local_infra_data=local_infra_data)
+    print('Done.')
+
+    # assign ped infrastructure designations
+    print('Assigning pedestrian infrastructure designations.')
+    edges = assign_ped_infra(
+        G, nodes, edges, local_infra_data=local_infra_data)
+    print('Done.')
+
     # load elevation data
     if dem_mode == 'otf':
         print('Downloading DEMs from USGS...this might take a while')
@@ -930,42 +1263,43 @@ if __name__ == '__main__':
 
         # iterate through pairs of slope boundaries defined
         # in line 16
-        for i, lower_bound in enumerate(slope_stat_breaks):
-            bounds = slope_stat_breaks[i:i + 2]
+        for breaks in slope_stat_breaks:
+            for i, lower_bound in enumerate(breaks):
+                bounds = breaks[i:i + 2]
 
-            if len(bounds) == 2:
-                upper_bound = bounds[1]
-                upper_bound_str = str(upper_bound)
+                if len(bounds) == 2:
+                    upper_bound = bounds[1]
+                    upper_bound_str = str(upper_bound)
 
-            else:
-                upper_bound = None
-                upper_bound_str = 'plus'
+                else:
+                    upper_bound = None
+                    upper_bound_str = 'plus'
 
-            for stat in ["tot", "pct"]:
+                for stat in ["tot", "pct"]:
 
-                # define the new column name to store the slope
-                # stat in the edges table
-                new_colname = '{0}_{1}_dist_{2}_{3}'.format(
-                    direction, stat, lower_bound, upper_bound_str)
-                custom_tags.append(new_colname)
+                    # define the new column name to store the slope
+                    # stat in the edges table
+                    new_colname = '{0}_{1}_dist_{2}_{3}'.format(
+                        direction, stat, lower_bound, upper_bound_str)
+                    custom_tags.append(new_colname)
 
-                mask = get_slope_mask(
-                    edges, lower_bound, upper_bound, direction)
+                    mask = get_slope_mask(
+                        edges, lower_bound, upper_bound, direction)
 
-                # multiplying the distances by the boolean mask
-                # will set all distances that correspond to slopes
-                # outside of the mask boundaries used to 0
-                masked_dists = edges['dists'] * mask
+                    # multiplying the distances by the boolean mask
+                    # will set all distances that correspond to slopes
+                    # outside of the mask boundaries used to 0
+                    masked_dists = edges['dists'] * mask
 
-                # sum these masked dists to get total dist within
-                # the slope bounds
-                if stat == "tot":
-                    edges[new_colname] = masked_dists.apply(sum)
+                    # sum these masked dists to get total dist within
+                    # the slope bounds
+                    if stat == "tot":
+                        edges[new_colname] = masked_dists.apply(sum)
 
-                # or divide by the total edge length to get a percentage
-                elif stat == "pct":
-                    edges[new_colname] = \
-                        masked_dists.apply(sum) / edges['length']
+                    # or divide by the total edge length to get a percentage
+                    elif stat == "pct":
+                        edges[new_colname] = \
+                            masked_dists.apply(sum) / edges['length']
 
     edges = edges[[col for col in edges.columns if col not in [
         'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
@@ -975,13 +1309,16 @@ if __name__ == '__main__':
     print('Generating generalized costs for bike routing.')
     edges = append_gen_cost_bike(edges)
 
+    # get generalized costs for ped routing
+    print('Generating generalized costs for pedestrian routing.')
+    edges = append_gen_cost_ped(edges)
+
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs(epsg=4326)
 
     if save_as == 'shp':
         # turn the edges back to a graph to save as shapefile
         print('Converting edges and nodes back to graph structure.')
-        G = ox.gdfs_to_graph(nodes, edges)
         print('Done.')
         print('Saving graph as shapefile...')
         nodes.gdf_name = 'nodes'
@@ -989,30 +1326,48 @@ if __name__ == '__main__':
         edges.gdf_name = 'edges'
         ox.save_gdf_shapefile(edges[[
             col for col in ox.settings.osm_xml_way_tags] + [
+            'osmid', 'u', 'v',
+            'parallel_traffic:forward', 'parallel_traffic:backward',
+            'cross_traffic:forward', 'cross_traffic:backward',
+            'control_type:forward', 'control_type:backward',
+            'bike_infra', 'no_bike_penalty',
+            'xwalk:forward', 'xwalk:backward',
             'slope_penalty:forward', 'slope_penalty:backward',
-            'no_bike_penalty', 'parallel_traffic_penalty:forward',
+            'parallel_traffic_penalty:forward',
             'parallel_traffic_penalty:backward',
             'cross_traffic_penalty_ls:forward',
             'cross_traffic_penalty_ls:backward',
             'cross_traffic_penalty_r:forward',
-            'bike_path_penalty:forward', 'bike_path_penalty:backward',
-            'bike_blvd_penalty:forward', 'bike_blvd_penalty:backward',
+            'cross_traffic_penalty_r:backward',
+            'bike_path_penalty', 'bike_blvd_penalty',
             'signal_penalty:forward', 'signal_penalty:backward',
             'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
+            'ped_slope_penalty:forward', 'ped_slope_penalty:backward',
+            'unpaved_alley_penalty', 'busy_penalty',
+            'unsig_art_xing_penalty_lr:forward',
+            'unsig_art_xing_penalty_lr:backward',
+            'unsig_art_xing_penalty_s:forward',
+            'unsig_art_xing_penalty_s:backward',
+            'unmarked_coll_xing_penalty_lr:forward',
+            'unmarked_coll_xing_penalty_lr:backward',
+            'unmarked_coll_xing_penalty_s:forward',
+            'unmarked_coll_xing_penalty_s:backward',
             'geometry']], 'edges', data_dir + out_fname)
     elif save_as == 'osm':
         print('Saving graph as OSM XML...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
             merge_edges=False)
+        os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
+            os.path.join(data_dir, out_fname)))
         print('File now available at {0}'.format(
-            os.path.join(data_dir, out_fname + '.osm')))
+            os.path.join(data_dir, out_fname + '.osm.pbf')))
     else:
         raise ValueError(
             "{0} is not a valid output file type. See --help for more "
             "details.".format(save_as))
 
     # clear out the tmp directory
-    tmp_files = glob('../data/tmp/*')
+    tmp_files = glob.glob('../data/tmp/*')
     for f in tmp_files:
         os.remove(f)
