@@ -370,7 +370,8 @@ def get_slope_mask(edges_gdf, lower, upper=None, direction="up"):
 
 def get_nearest_nodes_to_features(nodes_gdf, features_gdf):
     """
-    Assign traffic control type column to edges, forward and backward.
+    Perform a nearest neighbor analysis between street nodes and
+    network features.
 
     Args:
         nodes_gdf: a geopandas.GeoDataFrame object of OSM nodes
@@ -494,6 +495,18 @@ def assign_traffic_control(G, nodes_gdf, edges_gdf, data_dir=data_dir, stop_sign
 
 
 def assign_bike_infra(edges_gdf, local_infra_data=True):
+    """
+    Assign bicycle infrastructure type to network edges
+
+    Args:
+        edges_gdf : geopandas.GeoDataFrame
+        local_infra_data : boolean
+            use local infrastructure data
+
+    Returns:
+        edges geopandas.GeoDataFrame
+
+    """
 
     if local_infra_data:
 
@@ -647,6 +660,26 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
 
 def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwalk_fname, local_infra_data=True):
+    """
+    Assigns pedestrian infrastructure types to network edges
+
+    Args:
+        G : networkx multi(di)graph
+        nodes_gdf : geopandas.GeoDataFrame
+            object of OSM nodes with columns 'x' and 'y'
+        edges_gdf : geopandas.GeoDataFrame
+        data_dir : string
+            (relative) path to project data directory
+        xwalk_fname : string
+            name of crosswalk shapefile
+        traffic_signals_fname : string
+            name of traffic signals shapefile
+        local_infra_data : boolean
+            use local infrastructure data
+
+    Returns:
+        edges geopandas.GeoDataFrame
+    """
     nodes = nodes_gdf.copy()
     edges = edges_gdf.copy()
     nodes['xwalk'] = None
@@ -710,11 +743,10 @@ def append_gen_cost_bike(edges_gdf):
     statistics and infrastructure.
 
     Args:
-        edges_gdf: a geopandas.GeoDataFrame object with a column
-            named 'slopes' containing a list of edge segment
+        edges_gdf: geopandas.GeoDataFrame object
 
     Returns:
-        edges_gdf
+        edges_gdf: geopandas.GeoDataFrame
     """
 
     # slopes
@@ -838,6 +870,16 @@ def append_gen_cost_bike(edges_gdf):
 
 
 def append_gen_cost_ped(edges_gdf):
+    """
+    Generates directional, turn-based generalized costs using slope
+    statistics and infrastructure.
+
+    Args:
+        edges_gdf: geopandas.GeoDataFrame object 
+
+    Returns:
+        edges_gdf: geopandas.GeoDataFrame object 
+    """
     edges_gdf['ped_slope_penalty:forward'] = \
         edges_gdf['up_pct_dist_10_plus'] * .99
     edges_gdf['ped_slope_penalty:backward'] = \
@@ -957,6 +999,20 @@ def append_gen_cost_ped(edges_gdf):
 
 
 def get_speeds_and_volumes(data_dir):
+    """
+    Extract and process speed and volume data from Streetlight
+    Data extracts.
+
+    Args:
+        data_dir : string
+            (relative) path to project data directory
+
+    Returns:
+        speeds: geopandas.GeoDataFrame of speed data keyed on 
+            OSM edge IDs
+        aadt: geopandas.GeoDataFrame of traffic volume data
+            keyed on OSM edge IDs
+    """
 
     df = pd.DataFrame()
 
@@ -1012,7 +1068,19 @@ def get_speeds_and_volumes(data_dir):
     return speeds, aadt
 
 
-def process_volumes(edges_gdf, edges_w_vol):
+def process_volumes(edges_gdf, edges_w_vol_gdf):
+    """
+    Compute aggregate cross traffic and parallel traffic volumes for
+    all OSM edges that connect to an edge with volume data.
+
+    Args:
+        edges_gdf: geopandas.GeoDataFrame object of all OSM edges
+        edges_w_vol_gdf: geopandas.GeoDataFrame object of OSM edges but
+            only those edges that have volume data
+
+    Returns:
+        edges_gdf: geopandas.GeoDataFrame object 
+    """
 
     edges_gdf['bearing:forward'] = edges_gdf['bearing'].values
     edges_gdf['bearing:backward'] = (edges_gdf['bearing'].values + 180) % 360
@@ -1330,8 +1398,8 @@ if __name__ == '__main__':
             'parallel_traffic:forward', 'parallel_traffic:backward',
             'cross_traffic:forward', 'cross_traffic:backward',
             'control_type:forward', 'control_type:backward',
-            'bike_infra', 'no_bike_penalty',
             'xwalk:forward', 'xwalk:backward',
+            'bike_infra',
             'slope_penalty:forward', 'slope_penalty:backward',
             'parallel_traffic_penalty:forward',
             'parallel_traffic_penalty:backward',
@@ -1339,6 +1407,7 @@ if __name__ == '__main__':
             'cross_traffic_penalty_ls:backward',
             'cross_traffic_penalty_r:forward',
             'cross_traffic_penalty_r:backward',
+            'no_bike_penalty',
             'bike_path_penalty', 'bike_blvd_penalty',
             'signal_penalty:forward', 'signal_penalty:backward',
             'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
