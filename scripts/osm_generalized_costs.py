@@ -583,9 +583,11 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
     if ('cycleway' in edges_gdf.columns) & ('bicycle' in edges_gdf.columns):
         # no bike lane
         edges_gdf.loc[
-            (pd.isnull(edges_gdf['cycleway'])) |
-            (edges_gdf['cycleway'] == 'no') |
-            (edges_gdf['bicycle'] == 'no') &
+            (
+                (pd.isnull(edges_gdf['cycleway'])) |
+                (edges_gdf['cycleway'] == 'no') |
+                (edges_gdf['bicycle'] == 'no')
+            ) &
             (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
@@ -606,8 +608,9 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
     elif 'cycleway' in edges_gdf.columns:
         # no bike lane
         edges_gdf.loc[
-            (pd.isnull(edges_gdf['cycleway'])) |
-            (edges_gdf['cycleway'] == 'no') &
+            (
+                (pd.isnull(edges_gdf['cycleway'])) |
+                (edges_gdf['cycleway'] == 'no')) &
             (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
@@ -719,7 +722,7 @@ def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwa
             intx, xwalks[
                 (~pd.isnull(xwalks['CrossType'])) &
                 (xwalks['CrossType'].str.contains('Uncontrolled'))])
-        nodes.loc[nodes_w_sig_xwalks, 'xwalk'] = 'unsig'
+        nodes.loc[nodes_w_unsig_xwalks, 'xwalk'] = 'unsig'
         nodes.loc[
             (~pd.isnull(nodes['highway'])) &
             (nodes['highway'].str.contains('crossing')), 'xwalk'] = 'unsig'
