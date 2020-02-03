@@ -127,18 +127,18 @@ collector crossing w/o crosswalk | 28 | backward | straight | unmarked_coll_xing
 |gen_cost_ped:backward:right | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
 
 ## Slope Computations
-<img src="https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_mean_slopes.png" width=70%>
+<img src="images/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
 
 ### Examples
 The following images show the LA county OSM roads colored from green to red based on the percentage of each OSM way that has a slope >= 6%:
 
-1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/la_slopes.png)
+1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:![](images/la_slopes.png)
 
 2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach:![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/manhattan_beach.png)
 
 3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):  
-![](https://github.com/RSGInc/ladot_analysis_dataprep/blob/master/baxter_street.png)
+![](images/baxter_street.png)
  
  
  
