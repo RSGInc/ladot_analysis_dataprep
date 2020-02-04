@@ -457,6 +457,7 @@ def assign_traffic_control(G, nodes_gdf, edges_gdf, data_dir=data_dir, stop_sign
                 "script with the '-i' flag to avoid encountering this error "
                 "again.".format(stops_path))
         stops = stops.to_crs(epsg=2770)
+        stops = stops[~stops['TOOLTIP'].str.contains('Yield', na=False)]
         nodes_w_stops = get_nearest_nodes_to_features(intx, stops)
         nodes.loc[nodes_w_stops, 'stop'] = True
         nodes.loc[
@@ -592,8 +593,8 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
         # shared lane
         edges_gdf.loc[
-            (edges_gdf['cycleway'].str.contains('shared')) |
-            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            (edges_gdf['cycleway'].str.contains('shared', na=False)) |
+            (edges_gdf['more_bike_infra'].str.contains('Route', na=False)),
             'bike_infra'] = 'blvd'
 
         # bike path
@@ -615,8 +616,8 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
         # shared lane
         edges_gdf.loc[
-            (edges_gdf['cycleway'].str.contains('shared')) |
-            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            (edges_gdf['cycleway'].str.contains('shared', na=False)) |
+            (edges_gdf['more_bike_infra'].str.contains('Route', na=False)),
             'bike_infra'] = 'blvd'
 
         # bike path
@@ -632,7 +633,7 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
         # shared lane
         edges_gdf.loc[
-            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            (edges_gdf['more_bike_infra'].str.contains('Route', na=False)),
             'bike_infra'] = 'blvd'
 
         # bike path
@@ -651,7 +652,7 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
         # shared lane
         edges_gdf.loc[
-            (edges_gdf['more_bike_infra'].str.contains('Route')),
+            (edges_gdf['more_bike_infra'].str.contains('Route', na=False)),
             'bike_infra'] = 'blvd'
 
         # bike path
@@ -720,17 +721,15 @@ def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwa
         # unsignalized crosswalks
         nodes_w_unsig_xwalks = get_nearest_nodes_to_features(
             intx, xwalks[
-                (~pd.isnull(xwalks['CrossType'])) &
-                (xwalks['CrossType'].str.contains('Uncontrolled'))])
+                (xwalks['CrossType'].str.contains('Uncontrolled', na=False))])
         nodes.loc[nodes_w_unsig_xwalks, 'xwalk'] = 'unsig'
         nodes.loc[
-            (~pd.isnull(nodes['highway'])) &
-            (nodes['highway'].str.contains('crossing')), 'xwalk'] = 'unsig'
+            (nodes['highway'].str.contains('crossing', na=False)), 'xwalk'] = 'unsig'
 
     else:
 
         # assume all crosswalks are unsignalized
-        nodes.loc[nodes['highway'].str.contains('crossing'), 'xwalk'] = 'unsig'
+        nodes.loc[nodes['highway'].str.contains('crossing', na=False), 'xwalk'] = 'unsig'
 
     edges['xwalk:backward'] = None
     edges.loc[:, 'xwalk:backward'] = nodes.loc[edges['u'], 'xwalk'].values
