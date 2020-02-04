@@ -1036,6 +1036,9 @@ def get_speeds_and_volumes(data_dir):
         df = pd.concat((df, tmp), ignore_index=True)
 
     df = df[df['Day Type'] == '1: Weekday (M-Th)']
+
+    # peak speed based on (Peak AM | Peak PM) Day Part depending
+    # on which corresponds to the max traffic volume
     speed_pivot = df[[
         'Zone ID', 'Day Part', 'Average Daily Segment Traffic (StL Volume)',
         'direction']].set_index(['Zone ID', 'direction', 'Day Part']).unstack()
@@ -1056,6 +1059,8 @@ def get_speeds_and_volumes(data_dir):
         'Zone ID', 'direction', 'Avg Segment Speed (mph)']]
     peak_speeds.rename(
         columns={'Avg Segment Speed (mph)': 'speed'}, inplace=True)
+
+    # off-peak speeds based on midday Day Part
     off_peak_speeds = df.loc[
         df['Day Part'] == '3: Mid-Day (10am-3pm)',
         ['Zone ID', 'direction', 'Avg Segment Speed (mph)']]
@@ -1064,6 +1069,7 @@ def get_speeds_and_volumes(data_dir):
     speeds = pd.merge(
         peak_speeds, off_peak_speeds,
         on=['Zone ID', 'direction'], suffixes=('_peak', '_offpeak'))
+
     aadt = df[df['Day Part'] == '0: All Day (12am-12am)']
     aadt = df.groupby('Zone ID').agg(aadt=(
         'Average Daily Segment Traffic (StL Volume)', 'sum')).reset_index()
