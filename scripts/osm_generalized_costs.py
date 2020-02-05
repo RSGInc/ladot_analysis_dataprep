@@ -517,7 +517,7 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
         if bikeways.crs != edges_gdf.crs:
             bikeways = bikeways.to_crs(edges_gdf.crs)
 
-        # extract points from lines at intervals  of 3m
+        # extract points from lines at intervals  of 5m
 
         # NOTE: This process can take ~2 hours to run. If you don't
         # care as much about 100% accuracy of bike matching, you can
@@ -530,11 +530,11 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
         #         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
 
         bikeways['points'] = bikeways['geometry'].apply(
-            lambda x: ox.redistribute_vertices(x, 3))
+            lambda x: ox.redistribute_vertices(x, 5))
 
         # store points in a new dataframe
         bike_points = pd.DataFrame()
-        for i, row in bikeways.iterrows():
+        for i, row in tqdm(bikeways.iterrows(), total=len(bikeways)):
             for geom in row['points']:
                 tmp = pd.DataFrame({
                     'more_bike_infra': [row['Bikeway']],
@@ -1301,161 +1301,161 @@ if __name__ == '__main__':
         G, nodes, edges, local_infra_data=local_infra_data)
     print('Done.')
 
-    # # load elevation data
-    # if dem_mode == 'otf':
-    #     print('Downloading DEMs from USGS...this might take a while')
-    #     integer_bbox = get_integer_bbox(nodes)
-    #     num_files = get_all_dems(
-    #         *integer_bbox, dem_formattable_path, dem_formattable_fname)
+    # load elevation data
+    if dem_mode == 'otf':
+        print('Downloading DEMs from USGS...this might take a while')
+        integer_bbox = get_integer_bbox(nodes)
+        num_files = get_all_dems(
+            *integer_bbox, dem_formattable_path, dem_formattable_fname)
 
-    #     if num_files > 1:
-    #         _ = get_mosaic(dem_fname, data_dir)
-    #     else:
-    #         single_file = glob(os.path.join(data_dir, 'tmp', '*.tif'))[0]
-    #         shutil.copyfile(
-    #             single_file, os.path.join(data_dir, 'tmp', dem_fname))
-    #     _ = reproject_geotiff(dem_fname, data_dir)
+        if num_files > 1:
+            _ = get_mosaic(dem_fname, data_dir)
+        else:
+            single_file = glob(os.path.join(data_dir, 'tmp', '*.tif'))[0]
+            shutil.copyfile(
+                single_file, os.path.join(data_dir, 'tmp', dem_fname))
+        _ = reproject_geotiff(dem_fname, data_dir)
 
-    # print('Loading the DEM from disk...')
-    # path = os.path.join(data_dir, dem_fname)
-    # try:
-    #     dem = rasterio.open(path)
-    # except RasterioIOError:
-    #     print(
-    #         "Couldn't find file {0}. Use the -d flag "
-    #         "to specify a different directory if your "
-    #         "data is somewhere other than '../data/'.".format(path))
+    print('Loading the DEM from disk...')
+    path = os.path.join(data_dir, dem_fname)
+    try:
+        dem = rasterio.open(path)
+    except RasterioIOError:
+        print(
+            "Couldn't find file {0}. Use the -d flag "
+            "to specify a different directory if your "
+            "data is somewhere other than '../data/'.".format(path))
 
-    # # extract elevation trajectories from DEM. This can take a while.
-    # print(
-    #     'Extracting elevation trajectories for the network edges...'
-    #     'this might take a while.')
-    # z_trajectories = []
-    # for i, edge in tqdm(edges.iterrows(), total=len(edges)):
-    #     z_trajectories.append([x[0] for x in dem.sample(edge['coord_pairs'])])
-    # edges['z_trajectories'] = z_trajectories
-    # print('Done.')
+    # extract elevation trajectories from DEM. This can take a while.
+    print(
+        'Extracting elevation trajectories for the network edges...'
+        'this might take a while.')
+    z_trajectories = []
+    for i, edge in tqdm(edges.iterrows(), total=len(edges)):
+        z_trajectories.append([x[0] for x in dem.sample(edge['coord_pairs'])])
+    edges['z_trajectories'] = z_trajectories
+    print('Done.')
 
-    # print('Computing LineString distances and slopes')
-    # # point-to-point distances within each edge LineString geometry
-    # edges['dists'] = get_point_to_point_dists(edges)
+    print('Computing LineString distances and slopes')
+    # point-to-point distances within each edge LineString geometry
+    edges['dists'] = get_point_to_point_dists(edges)
 
-    # # compute slopes along each of those distances
-    # edges['slopes'] = get_slopes(edges)
-    # edges['mean_abs_slope'] = edges['slopes'].apply(
-    #     lambda x: np.mean(np.abs(x)))
+    # compute slopes along each of those distances
+    edges['slopes'] = get_slopes(edges)
+    edges['mean_abs_slope'] = edges['slopes'].apply(
+        lambda x: np.mean(np.abs(x)))
 
-    # # generate up- and down-slope stats as well as undirected
-    # print('Generating slope statistics going...')
-    # for direction in ["up", "down", "undirected"]:
-    #     print("..." + direction)
+    # generate up- and down-slope stats as well as undirected
+    print('Generating slope statistics going...')
+    for direction in ["up", "down", "undirected"]:
+        print("..." + direction)
 
-    #     # iterate through pairs of slope boundaries defined
-    #     # in line 16
-    #     for breaks in slope_stat_breaks:
-    #         for i, lower_bound in enumerate(breaks):
-    #             bounds = breaks[i:i + 2]
+        # iterate through pairs of slope boundaries defined
+        # in line 16
+        for breaks in slope_stat_breaks:
+            for i, lower_bound in enumerate(breaks):
+                bounds = breaks[i:i + 2]
 
-    #             if len(bounds) == 2:
-    #                 upper_bound = bounds[1]
-    #                 upper_bound_str = str(upper_bound)
+                if len(bounds) == 2:
+                    upper_bound = bounds[1]
+                    upper_bound_str = str(upper_bound)
 
-    #             else:
-    #                 upper_bound = None
-    #                 upper_bound_str = 'plus'
+                else:
+                    upper_bound = None
+                    upper_bound_str = 'plus'
 
-    #             for stat in ["tot", "pct"]:
+                for stat in ["tot", "pct"]:
 
-    #                 # define the new column name to store the slope
-    #                 # stat in the edges table
-    #                 new_colname = '{0}_{1}_dist_{2}_{3}'.format(
-    #                     direction, stat, lower_bound, upper_bound_str)
-    #                 custom_tags.append(new_colname)
+                    # define the new column name to store the slope
+                    # stat in the edges table
+                    new_colname = '{0}_{1}_dist_{2}_{3}'.format(
+                        direction, stat, lower_bound, upper_bound_str)
+                    custom_tags.append(new_colname)
 
-    #                 mask = get_slope_mask(
-    #                     edges, lower_bound, upper_bound, direction)
+                    mask = get_slope_mask(
+                        edges, lower_bound, upper_bound, direction)
 
-    #                 # multiplying the distances by the boolean mask
-    #                 # will set all distances that correspond to slopes
-    #                 # outside of the mask boundaries used to 0
-    #                 masked_dists = edges['dists'] * mask
+                    # multiplying the distances by the boolean mask
+                    # will set all distances that correspond to slopes
+                    # outside of the mask boundaries used to 0
+                    masked_dists = edges['dists'] * mask
 
-    #                 # sum these masked dists to get total dist within
-    #                 # the slope bounds
-    #                 if stat == "tot":
-    #                     edges[new_colname] = masked_dists.apply(sum)
+                    # sum these masked dists to get total dist within
+                    # the slope bounds
+                    if stat == "tot":
+                        edges[new_colname] = masked_dists.apply(sum)
 
-    #                 # or divide by the total edge length to get a percentage
-    #                 elif stat == "pct":
-    #                     edges[new_colname] = \
-    #                         masked_dists.apply(sum) / edges['length']
+                    # or divide by the total edge length to get a percentage
+                    elif stat == "pct":
+                        edges[new_colname] = \
+                            masked_dists.apply(sum) / edges['length']
 
-    # edges = edges[[col for col in edges.columns if col not in [
-    #     'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
-    # print('Done.')
+    edges = edges[[col for col in edges.columns if col not in [
+        'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
+    print('Done.')
 
-    # # get generalized costs for bike routing
-    # print('Generating generalized costs for bike routing.')
-    # edges = append_gen_cost_bike(edges)
+    # get generalized costs for bike routing
+    print('Generating generalized costs for bike routing.')
+    edges = append_gen_cost_bike(edges)
 
-    # # get generalized costs for ped routing
-    # print('Generating generalized costs for pedestrian routing.')
-    # edges = append_gen_cost_ped(edges)
+    # get generalized costs for ped routing
+    print('Generating generalized costs for pedestrian routing.')
+    edges = append_gen_cost_ped(edges)
 
-    # # project the edges back to lat/lon coordinate system
-    # edges = edges.to_crs(epsg=4326)
+    # project the edges back to lat/lon coordinate system
+    edges = edges.to_crs(epsg=4326)
 
-    # if save_as == 'shp':
-    #     # turn the edges back to a graph to save as shapefile
-    #     print('Saving graph as shapefile. This might take a while...')
-    #     nodes.gdf_name = 'nodes'
-    #     ox.save_gdf_shapefile(nodes, 'nodes', data_dir + out_fname)
-    #     edges.gdf_name = 'edges'
-    #     ox.save_gdf_shapefile(edges[[
-    #         col for col in ox.settings.osm_xml_way_tags] + [
-    #         'osmid', 'u', 'v',
-    #         'parallel_traffic:forward', 'parallel_traffic:backward',
-    #         'cross_traffic:forward', 'cross_traffic:backward',
-    #         'control_type:forward', 'control_type:backward',
-    #         'xwalk:forward', 'xwalk:backward',
-    #         'bike_infra', 'more_bike_infra',
-    #         'slope_penalty:forward', 'slope_penalty:backward',
-    #         'parallel_traffic_penalty:forward',
-    #         'parallel_traffic_penalty:backward',
-    #         'cross_traffic_penalty_ls:forward',
-    #         'cross_traffic_penalty_ls:backward',
-    #         'cross_traffic_penalty_r:forward',
-    #         'cross_traffic_penalty_r:backward',
-    #         'no_bike_penalty',
-    #         'bike_path_penalty', 'bike_blvd_penalty',
-    #         'signal_penalty:forward', 'signal_penalty:backward',
-    #         'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
-    #         'ped_slope_penalty:forward', 'ped_slope_penalty:backward',
-    #         'unpaved_alley_penalty', 'busy_penalty',
-    #         'unsig_art_xing_penalty_lr:forward',
-    #         'unsig_art_xing_penalty_lr:backward',
-    #         'unsig_art_xing_penalty_s:forward',
-    #         'unsig_art_xing_penalty_s:backward',
-    #         'unmarked_coll_xing_penalty_lr:forward',
-    #         'unmarked_coll_xing_penalty_lr:backward',
-    #         'unmarked_coll_xing_penalty_s:forward',
-    #         'unmarked_coll_xing_penalty_s:backward',
-    #         'geometry']], 'edges', data_dir + out_fname)
-    # elif save_as == 'osm':
-    #     print('Saving graph as OSM XML. This might take a while...')
-    #     ox.save_as_osm(
-    #         [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
-    #         merge_edges=False)
-    #     os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
-    #         os.path.join(data_dir, out_fname)))
-    #     print('File now available at {0}'.format(
-    #         os.path.join(data_dir, out_fname + '.osm.pbf')))
-    # else:
-    #     raise ValueError(
-    #         "{0} is not a valid output file type. See --help for more "
-    #         "details.".format(save_as))
+    if save_as == 'shp':
+        # turn the edges back to a graph to save as shapefile
+        print('Saving graph as shapefile. This might take a while...')
+        nodes.gdf_name = 'nodes'
+        ox.save_gdf_shapefile(nodes, 'nodes', data_dir + out_fname)
+        edges.gdf_name = 'edges'
+        ox.save_gdf_shapefile(edges[[
+            col for col in ox.settings.osm_xml_way_tags] + [
+            'osmid', 'u', 'v',
+            'parallel_traffic:forward', 'parallel_traffic:backward',
+            'cross_traffic:forward', 'cross_traffic:backward',
+            'control_type:forward', 'control_type:backward',
+            'xwalk:forward', 'xwalk:backward',
+            'bike_infra', 'more_bike_infra',
+            'slope_penalty:forward', 'slope_penalty:backward',
+            'parallel_traffic_penalty:forward',
+            'parallel_traffic_penalty:backward',
+            'cross_traffic_penalty_ls:forward',
+            'cross_traffic_penalty_ls:backward',
+            'cross_traffic_penalty_r:forward',
+            'cross_traffic_penalty_r:backward',
+            'no_bike_penalty',
+            'bike_path_penalty', 'bike_blvd_penalty',
+            'signal_penalty:forward', 'signal_penalty:backward',
+            'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
+            'ped_slope_penalty:forward', 'ped_slope_penalty:backward',
+            'unpaved_alley_penalty', 'busy_penalty',
+            'unsig_art_xing_penalty_lr:forward',
+            'unsig_art_xing_penalty_s:forward',
+            'unsig_art_xing_penalty_lr:backward',
+            'unsig_art_xing_penalty_s:backward',
+            'unmarked_coll_xing_penalty_lr:forward',
+            'unmarked_coll_xing_penalty_s:forward',
+            'unmarked_coll_xing_penalty_lr:backward',
+            'unmarked_coll_xing_penalty_s:backward',
+            'geometry']], 'edges', data_dir + out_fname)
+    elif save_as == 'osm':
+        print('Saving graph as OSM XML. This might take a while...')
+        ox.save_as_osm(
+            [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
+            merge_edges=False)
+        os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
+            os.path.join(data_dir, out_fname)))
+        print('File now available at {0}'.format(
+            os.path.join(data_dir, out_fname + '.osm.pbf')))
+    else:
+        raise ValueError(
+            "{0} is not a valid output file type. See --help for more "
+            "details.".format(save_as))
 
-    # # clear out the tmp directory
-    # tmp_files = glob.glob('../data/tmp/*')
-    # for f in tmp_files:
-    #     os.remove(f)
+    # clear out the tmp directory
+    tmp_files = glob.glob('../data/tmp/*')
+    for f in tmp_files:
+        os.remove(f)
