@@ -159,8 +159,9 @@ The following images show the LA county OSM roads colored from green to red base
 
 2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach: <img src="images/manhattan_beach.png"  width=70%>
 
-3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):  
-<img src="images/baxter_street.png"  width=70%>
+3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):
+   
+   <img src="images/baxter_street.png"  width=70%>
  
  
  
