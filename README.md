@@ -139,6 +139,14 @@ Crosswalk assignment currently works like stop sign assignment described above. 
 
 <img src="images/crosswalk_matching.png" width=70%>
 
+## Bicycle Infrastructure Assignment
+
+### Bike Lanes
+Bike infrastructure is assigned by converting LADOT Bikeways lines to points, and then snapping those points to the OSM network:
+
+<img src="images/bike_infra_matching.png" width=70%>
+^ Above, LADOT Bikeways are shown in teal, with OSM ways shown in pink where they have been assigned bicycle infrastructure and blue where they have not.
+
 ## Slope Computations
 <img src="images/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
