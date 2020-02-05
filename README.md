@@ -137,7 +137,8 @@ Currently stop sign designations are assigned at the intersection level, meaning
 ### Crosswalks
 Crosswalk assignment currently works like stop sign assignment described above. If there is a crosswalk at an intersection, all edges terminating at that intersection are assigned a crosswalk penalty:
 
-<img src="images/crosswalk_matching.png" width=70%>
+<img src="images/xwalk_matching.png">
+If OSM has footway edges representing the crosswalks, then those footways will be associated with the crosswalk, as seen in the right-most intersection above. Otherwise, the crosswalks will be associated with the roadway edges as seen in the two intersections to the left.
 
 ## Bicycle Infrastructure Assignment
 
