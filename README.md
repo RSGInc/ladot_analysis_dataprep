@@ -93,6 +93,32 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 |gen_cost_bike:backward:straight | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + no_bike_penalty + cross_traffic_penalty_ls:backward) |
 |gen_cost_bike:backward:right | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty + no_bike_penalty + cross_traffic_penalty_r:backward) |
 
+#### Examples:
+| | South Budlong Ave. | Baxster Street | 
+|--|--|--|
+|Way ID |[165344383](https://www.openstreetmap.org/way/165344383#map=19/33.97519/-118.29605)| [161705335](https://www.openstreetmap.org/way/161705335)
+| From Node | 123058787 | 5531221585 |
+| To Node | 123058790 | 26187155 |
+| Length | 89.023 | 225.923 |
+| gen_cost_bike:forward:left | 94.631449 | 828.0568817 |
+| gen_cost_bike:forward:straight | 90.892483 | 819.9501257 |
+| gen_cost_bike:forward:right | 92.761966 | 828.0568817 |
+| gen_cost_bike:backward:left | 93.207081 | 202.089846 |
+| gen_cost_bike:backward:straight | 89.468115 | 193.98309 |
+| gen_cost_bike:backward:right | 93.207081 | 202.089846 |
+| slope_penalty:forward | 0 | 3.243050056 |
+| slope_penalty:backward | 0 | 0 |
+| bike_path_penalty:forward | 0 | 0 |
+| bike_path_penalty:backward | 0 | 0 |
+| bike_blvd_penalty:forward | 0 | 0 |
+| bike_blvd_penalty:backward | 0 | 0 |
+| signal_penalty:forward | 0.021 | 0 |
+| signal_penalty:backward | 0 | 0 |
+| stop_sign_penalty:forward | 0 | 0.005 |
+| stop_sign_penalty:backward | 0.005 | 0.005 |
+
+   
+
 
 ### Pedestrian
 |Length Adjusted Metric|	Weight<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
@@ -126,6 +152,31 @@ collector crossing w/o crosswalk | 28 | backward | straight | unmarked_coll_xing
 |gen_cost_ped:backward:straight | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_s:backward + unmarked_coll_xing_s:backward)|
 |gen_cost_ped:backward:right | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
 
+#### Examples:
+| | Lanark Street|
+|--|--|
+|Way ID | [13356087](https://www.openstreetmap.org/way/13356087)|
+|From Node | 123018756 |
+|To Node | 368008589 |
+|gen_cost_ped:forward:left | 108.416 |
+|gen_cost_ped:forward:straight | 54.416 |
+|gen_cost_ped:forward:right | 108.416 |
+|gen_cost_ped:backward:left | 108.416 |
+|gen_cost_ped:backward:straight | 127.416 |
+|gen_cost_ped:backward:right | 108.416 |
+|unsig_art_xing_penalty_lr:forward | 0 |
+|unsig_art_xing_penalty_s:forward | 0 |
+|unsig_art_xing_penalty_lr:backward | 0 |
+|unsig_art_xing_penalty_s:backward | 73 |
+|unmarked_coll_xing_penalty_lr:forward | 0 |
+|unmarked_coll_xing_penalty_s:forward | 0 |
+|unmarked_coll_xing_penalty_lr:backward | 0 |
+|unmarked_coll_xing_penalty_s:backward | 0 |
+|ped_slope_penalty:forward | 0 |
+|ped_slope_penalty:backward | 0 |
+|unpaved_alley_penalty | 0 |
+|busy_penalty | 0 |
+
 ## Control Type Assignment
 
 ### Stop Signs
@@ -137,7 +188,8 @@ Currently stop sign designations are assigned at the intersection level, meaning
 ### Crosswalks
 Crosswalk assignment currently works like stop sign assignment described above. If there is a crosswalk at an intersection, all edges terminating at that intersection are assigned a crosswalk penalty:
 
-<img src="images/crosswalk_matching.png" width=70%>
+<img src="images/xwalk_matching.png">
+If OSM has footway edges representing the crosswalks, then those footways will be associated with the crosswalk, as seen in the right-most intersection above. Otherwise, the crosswalks will be associated with the roadway edges as seen in the two intersections to the left.
 
 ## Bicycle Infrastructure Assignment
 
@@ -158,8 +210,9 @@ The following images show the LA county OSM roads colored from green to red base
 
 2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach: <img src="images/manhattan_beach.png"  width=70%>
 
-3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):  
-<img src="images/baxter_street.png"  width=70%>
+3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):
+   
+   <img src="images/baxter_street.png"  width=70%>
  
  
  
