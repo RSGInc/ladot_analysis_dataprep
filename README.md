@@ -132,6 +132,13 @@ collector crossing w/o crosswalk | 28 | backward | straight | unmarked_coll_xing
 Currently stop sign designations are assigned at the intersection level, meaning if there is any stop sign at an intersection, all edges terminating at that intersection are assigned a stop sign penalty:
 <img src="images/stop_sign_matching.png" width=70%>
 
+## Pedestrian Infrastructure Assignment
+
+### Crosswalks
+Crosswalk assignment currently works like stop sign assignment described above. If there is a crosswalk at an intersection, all edges terminating at that intersection are assigned a crosswalk penalty:
+
+<img src="images/crosswalk_matching.png" width=70%>
+
 ## Slope Computations
 <img src="images/la_mean_slopes.png" width=70%>
 ^ above: LA County road network colored by mean absolute slope along each OSM way.
