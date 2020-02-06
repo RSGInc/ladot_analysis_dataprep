@@ -915,17 +915,11 @@ def append_gen_cost_ped(edges_gdf):
         # edges have aadt between 13k and 23k and the intersection is
         # unsignalized, apply the fixed penalty for unsignalized
         # arterial crossings
-        edges_gdf.loc[:, 'unsig_art_xing_penalty_lr:{0}'.format(direc)] = ((
+        edges_gdf.loc[:, 'unsig_art_xing_penalty_lr:{0}'.format(direc)] = (
             (
-                (edges_gdf[
-                    'parallel_traffic:{0}'.format(direc)] >= 13000) &
-                (edges_gdf[
-                    'parallel_traffic:{0}'.format(direc)] <= 23000)
-            ) |
-            (
-                (edges_gdf['aadt'] >= 13000) &
-                (edges_gdf['aadt'] <= 23000)
-            )) &
+                (edges_gdf['parallel_traffic:{0}'.format(direc)] >= 13000) |
+                (edges_gdf['aadt'] >= 13000)
+            ) &
             (edges_gdf['control_type:{0}'.format(direc)] != 'signal') &
             (edges_gdf['xwalk:{0}'.format(direc)] != 'signal')) * 73
 
@@ -944,20 +938,16 @@ def append_gen_cost_ped(edges_gdf):
                 ) |
                 (
                     (edges_gdf['aadt'] >= 10000) &
-                    (edges_gdf['aadt'] <= 13000)
+                    (edges_gdf['aadt'] < 13000)
                 )) &
                 (pd.isnull(edges_gdf['xwalk:{0}'.format(direc)]))) * 28
 
         # if straight through, then the pedestrian will have to cross
-        # the cross traffic edges. If cross traffic aadt is between
-        # 13k and 23k and the intersection is unsignalized,
+        # the cross traffic edges. If cross traffic aadt is greater than
+        # 13k and the intersection is unsignalized,
         # apply the fixed penalty for unsignalized arterial crossings
         edges_gdf.loc[:, 'unsig_art_xing_penalty_s:{0}'.format(direc)] = (
-            (
-                (edges_gdf[
-                    'cross_traffic:{0}'.format(direc)] >= 13000) &
-                (edges_gdf[
-                    'cross_traffic:{0}'.format(direc)] <= 23000)) &
+            (edges_gdf['cross_traffic:{0}'.format(direc)] >= 13000) &
             (edges_gdf['control_type:{0}'.format(direc)] != 'signal') &
             (edges_gdf['xwalk:{0}'.format(direc)] != 'signal')) * 73
 
