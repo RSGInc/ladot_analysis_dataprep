@@ -50,6 +50,9 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 
 <sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If you do want to use local data but your filenames are different from those specified at the top of the script, you can edit them manually there.
 
+## Land Use Data
+Additional land use data for use in Conveyal Analysis are available as shapefiles [here](https://resourcesystemsgroupinc-my.sharepoint.com/personal/ben_stabler_rsginc_com1/_layouts/15/onedrive.aspx?originalPath=aHR0cHM6Ly9yZXNvdXJjZXN5c3RlbXNncm91cGluYy1teS5zaGFyZXBvaW50LmNvbS86ZjovZy9wZXJzb25hbC9iZW5fc3RhYmxlcl9yc2dpbmNfY29tMS9FZ205c3hEa2V0NU5tNHBoTEZ2X05zNEJJSjlNZlY1anN6NFM4SHFUNnc2c0ZnP3J0aW1lPTRLZjEyMHpCMTBn&CT=1584409358939&OR=OWA%2DNT&CID=6d731269%2D125c%2Dd14b%2Db1fe%2De357a419fd64&id=%2Fpersonal%2Fben%5Fstabler%5Frsginc%5Fcom1%2FDocuments%2FLADOT%2FLand%20Use). Their contents have been documented in the LADOT_landuse_data_inventory.xlsx file in this repository.
+
 ## Generalized Costs Calculations
 ### Bicycle
 
