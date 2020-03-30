@@ -54,6 +54,8 @@ if __name__ == '__main__':
 
     census_api_key = os.getenv("CENSUS_API")
     demog = get_demographic_data(data_year, census_api_key)
+    demog['FIPS'] = demog['state'] + demog['county'] + \
+        demog['TRACT'] + demog['BLKGRP']
     geog = get_geometries(data_year)
 
     merged = geog.merge(demog, on=['TRACT', 'BLKGRP'])
