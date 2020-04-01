@@ -1301,7 +1301,7 @@ if __name__ == '__main__':
         if num_files > 1:
             _ = get_mosaic(dem_fname, data_dir)
         else:
-            single_file = glob(os.path.join(data_dir, 'tmp', '*.tif'))[0]
+            single_file = glob.glob(os.path.join(data_dir, 'tmp', '*.tif'))[0]
             shutil.copyfile(
                 single_file, os.path.join(data_dir, 'tmp', dem_fname))
         _ = reproject_geotiff(dem_fname, data_dir)
@@ -1435,6 +1435,10 @@ if __name__ == '__main__':
         print('Saving graph as OSM XML. This might take a while...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
+            node_tags=ox.settings.osm_xml_node_tags,
+            node_attrs=ox.settings.osm_xml_node_attrs,
+            edge_tags=ox.settings.osm_xml_way_tags,
+            edge_attrs=ox.settings.osm_xml_way_attrs,
             merge_edges=False)
         os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
             os.path.join(data_dir, out_fname)))
