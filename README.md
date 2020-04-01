@@ -1,5 +1,5 @@
 # ladot_analysis_dataprep
-LADOT Analysis Tool Data Prep
+## LADOT Analysis Tool Data Prep
 
 This repository houses a Python script (**osm_generalized_costs.py**) designed to generate OSM-based, generalized cost-weighted networks for use in bicycle and pedestrian routing and accessibility applications. The generalized cost formulas used here are based on [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).
 
