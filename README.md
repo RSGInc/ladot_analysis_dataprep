@@ -59,15 +59,16 @@ The following datasets are used by Conveyal to define "opportunities" for comput
 
 |Computed Metric	|Distance Multiplier<sup>*</sup>	|Applicable Directions|	Applicable Turn Types|	Variable Name |	Notes|
 |--|--|--|--|--|--|
-|turns/mi | 0.042 | forward, backward | left, right | turn_penalty | |
+|distance | 1.0 | forward, backward | left, straight, right | distance | |
+| turns | 0.042 | forward, backward | left, right | turn_penalty | |
 |bike boulevard | -0.108 | forward, backward | left, straight, right | bike_blvd_penalty | OSM: cycleway="shared" OR LADOT: bikeway=("Route" OR "Shared Route")|
 |bike path | -0.16 | forward, backward | left, straight, right | bike_path_penalty | OSM: highway="cycleway" OR (highway="path" & bicycle="dedicated") OR LADOT: bikeway="Path"|
-|stop signs/mi | 0.005 | forward | left, straight, right | stop_penalty:forward | (LADOT: stop/yield) | (OSM: highway=stop)|
+|stop signs | 0.005 | forward | left, straight, right | stop_penalty:forward | (LADOT: stop/yield) | (OSM: highway=stop)|
 |traffic signal | 0.021 | forward | left, straight | signal_penalty:forward | (LADOT: signalized intersection) | (OSM: highway=traffic_signals)|
 |prop upslope 2-4% | 0.371 | forward | left, straight, right | slope_penalty:forward | |
 |prop upslope 4-6% | 1.23 | forward | left, straight, right | slope_penalty:forward | |
 |prop upslope 6%+ | 3.239 | forward | left, straight, right | slope_penalty:forward | |
-|stop signs/mi | 0.005 | backward | left, straight, right | stop_penalty:backward | (LADOT: stop/yield) | (OSM: highway=stop)|
+|stop signs | 0.005 | backward | left, straight, right | stop_penalty:backward | (LADOT: stop/yield) | (OSM: highway=stop)|
 |traffic signal | 0.021 | backward | left, straight | signal_penalty:backward | (LADOT: signalized intersection) | (OSM: highway=traffic_signals)|
 |prop downslope 2-4% | 0.371 | backward | left, straight, right | slope_penalty:backward | |
 |prop downslope 4-6% | 1.23 | backward | left, straight, right | slope_penalty:backward | |
@@ -125,8 +126,9 @@ The following datasets are used by Conveyal to define "opportunities" for comput
 
 
 ### Pedestrian
-|Length Adjusted Metric|	Weight<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
+|Length Adjusted Metric|	Distance Multiplier<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
 |--|--|--|--|--|--|
+|distance | 1.0 | forward, backward | left, straight, right | distance | |
 prop upslope 10%+ | 0.99 | forward | left, straight, right | ped_slope_penalty:forward | 
 prop downslope 10%+ | 0.99 | backward | left, straight, right | ped_slope_penalty:backward | 
 unpaved or alleyway | 0.51 | forward, backward | left, straight, right | unpaved_alley_penalty | OSM: highway="alley" OR surface="unpaved"
