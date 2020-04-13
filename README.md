@@ -57,7 +57,7 @@ The following datasets are used by Conveyal to define "opportunities" for comput
 ## Generalized Costs Calculations
 ### Bicycle
 
-|Computed Metric	|Weight<sup>*</sup>	|Applicable Directions|	Applicable Turn Types|	Variable Name |	Notes|
+|Computed Metric	|Distance Multiplier<sup>*</sup>	|Applicable Directions|	Applicable Turn Types|	Variable Name |	Notes|
 |--|--|--|--|--|--|
 |turns/mi | 0.042 | forward, backward | left, right | turn_penalty | |
 |bike boulevard | -0.108 | forward, backward | left, straight, right | bike_blvd_penalty | OSM: cycleway="shared" OR LADOT: bikeway=("Route" OR "Shared Route")|
