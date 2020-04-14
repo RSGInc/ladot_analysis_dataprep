@@ -1,8 +1,11 @@
 # LADOT Analysis Tool Data Prep
 
-This repository houses a Python script (**osm_generalized_costs.py**) designed to generate OSM-based, generalized cost-weighted networks for use in bicycle and pedestrian routing and accessibility applications. The generalized cost formulas used here are based on [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).
+This repository houses Python scripts to build networks and land use data for accessibility applications.
 
-## How to
+# Network
+The **osm_generalized_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
+
+## How to Build the Network
 1. Clone/download this repository.
 2. Copy local data files<sup>&dagger;</sup> into the data directory, including:
    - stop signs
@@ -24,15 +27,19 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
    python osm_generalized_costs.py -o <your_dem_file.tif>
    ```
 7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+   - `gen_cost_bike:forward:link`
    - `gen_cost_bike:forward:left`
    - `gen_cost_bike:forward:straight`
    - `gen_cost_bike:forward:right`
+   - `gen_cost_bike:backward:link`
    - `gen_cost_bike:backward:left`
    - `gen_cost_bike:backward:straight`
    - `gen_cost_bike:backward:right`
+   - `gen_cost_ped:forward:link`
    - `gen_cost_ped:forward:left`
    - `gen_cost_ped:forward:straight`
    - `gen_cost_ped:forward:right`
+   - `gen_cost_ped:backward:link`
    - `gen_cost_ped:backward:left`
    - `gen_cost_ped:backward:straight`
    - `gen_cost_ped:backward:right`
@@ -49,54 +56,41 @@ This repository houses a Python script (**osm_generalized_costs.py**) designed t
 
 <sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If you do want to use local data but your filenames are different from those specified at the top of the script, you can edit them manually there.
 
-## Other Data
-The following datasets are used by Conveyal to define "opportunities" for computing accessibilities and are not required for computing generalized costs on the travel network:
-   - **Land Use** - Additional land use data for use in Conveyal Analysis are available as shapefiles [here](https://resourcesystemsgroupinc-my.sharepoint.com/personal/ben_stabler_rsginc_com1/_layouts/15/onedrive.aspx?originalPath=aHR0cHM6Ly9yZXNvdXJjZXN5c3RlbXNncm91cGluYy1teS5zaGFyZXBvaW50LmNvbS86ZjovZy9wZXJzb25hbC9iZW5fc3RhYmxlcl9yc2dpbmNfY29tMS9FZ205c3hEa2V0NU5tNHBoTEZ2X05zNEJJSjlNZlY1anN6NFM4SHFUNnc2c0ZnP3J0aW1lPTRLZjEyMHpCMTBn&CT=1584409358939&OR=OWA%2DNT&CID=6d731269%2D125c%2Dd14b%2Db1fe%2De357a419fd64&id=%2Fpersonal%2Fben%5Fstabler%5Frsginc%5Fcom1%2FDocuments%2FLADOT%2FLand%20Use). Their contents have been documented in the LADOT_landuse_data_inventory.xlsx available [here](https://resourcesystemsgroupinc-my.sharepoint.com/:x:/g/personal/ben_stabler_rsginc_com1/Ec1iip5AnGlJjmogrsbKyrYBkBqCd9hhzevPk-j-_ox57w?e=M4tZH3).
-   - **Census** - The script to generate Census-based population and household data stored as shapefiles is located in the `scripts/` directory of this repository. The latest data as of March 2020 is included in the Land Use data files linked above.
-
 ## Generalized Costs Calculations
+
 ### Bicycle
+| Length Adjusted Metric    | Length Multiplier<sup>*</sup> | Variable Name            | Notes                                                                                      |
+|---------------------------|-------------------------------|--------------------------|--------------------------------------------------------------------------------------------|
+| distance                  | 1.0                           | distance                 |                                                                                            |
+| bike boulevard            | -0.108                        | bike_blvd_penalty        | OSM: cycleway="shared" OR LADOT: bikeway=("Route" OR "Shared Route")                       |
+| bike path                 | -0.16                         | bike_path_penalty        | OSM: highway="cycleway" OR (highway="path" & bicycle="dedicated") OR LADOT: bikeway="Path" |
+| prop link slope 2-4%      | 0.371                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
+| prop link slope 4-6%      | 1.23                          | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
+| prop link slope 6%+       | 3.239                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
+| parallel traffic (10-20k) | 0.091                         | parallel_traffic_penalty |                                                                                            |
+| parallel traffic (20k+)   | 0.231                         | parallel_traffic_penalty |                                                                                            |
+| no bike lane (10-20k)     | 0.368                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
+| no bike lane (20-30k)     | 1.4                           | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
+| no bike lane (30k+)       | 7.157                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 
-|Computed Metric	|Distance Multiplier<sup>*</sup>	|Applicable Directions|	Applicable Turn Types|	Variable Name |	Notes|
-|--|--|--|--|--|--|
-|distance | 1.0 | forward, backward | left, straight, right | distance | |
-| turns | 0.042 | forward, backward | left, right | turn_penalty | |
-|bike boulevard | -0.108 | forward, backward | left, straight, right | bike_blvd_penalty | OSM: cycleway="shared" OR LADOT: bikeway=("Route" OR "Shared Route")|
-|bike path | -0.16 | forward, backward | left, straight, right | bike_path_penalty | OSM: highway="cycleway" OR (highway="path" & bicycle="dedicated") OR LADOT: bikeway="Path"|
-|stop signs | 0.005 | forward | left, straight, right | stop_penalty:forward | (LADOT: stop/yield) | (OSM: highway=stop)|
-|traffic signal | 0.021 | forward | left, straight | signal_penalty:forward | (LADOT: signalized intersection) | (OSM: highway=traffic_signals)|
-|prop upslope 2-4% | 0.371 | forward | left, straight, right | slope_penalty:forward | |
-|prop upslope 4-6% | 1.23 | forward | left, straight, right | slope_penalty:forward | |
-|prop upslope 6%+ | 3.239 | forward | left, straight, right | slope_penalty:forward | |
-|stop signs | 0.005 | backward | left, straight, right | stop_penalty:backward | (LADOT: stop/yield) | (OSM: highway=stop)|
-|traffic signal | 0.021 | backward | left, straight | signal_penalty:backward | (LADOT: signalized intersection) | (OSM: highway=traffic_signals)|
-|prop downslope 2-4% | 0.371 | backward | left, straight, right | slope_penalty:backward | |
-|prop downslope 4-6% | 1.23 | backward | left, straight, right | slope_penalty:backward | |
-|prop downslope 6%+ | 3.239 | backward | left, straight, right | slope_penalty:backward | |
-|parallel traffic (10-20k) | 0.091 | forward, backward | left | parallel_traffic_penalty | |
-|parallel traffic (20k+) | 0.231 | forward, backward | left | parallel_traffic_penalty | |
-|no bike lane (10-20k) | 0.368 | forward, backward | left, straight, right | no_bike_penalty:forward | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL|
-|no bike lane (20-30k) | 1.4 | forward, backward | left, straight, right | no_bike_penalty:forward | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL|
-|no bike lane (30k+) | 7.157 | forward, backward | left, straight, right | no_bike_penalty:forward | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL|
-|cross traffic (5-10k) | 0.041 | forward | left, straight | cross_traffic_penalty_ls:forward | |
-|cross traffic (10-20k) | 0.059 | forward | left, straight | cross_traffic_penalty_ls:forward | |
-|cross traffic (20k+) | 0.322 | forward | left, straight | cross_traffic_penalty_ls:forward | |
-|cross traffic (10k+) | 0.038 | forward | right | cross_traffic_penalty_r:forward | |
-|cross traffic (5-10k) | 0.041 | backward | left, straight | cross_traffic_penalty_ls:backward | |
-|cross traffic (10-20k) | 0.059 | backward | left, straight | cross_traffic_penalty_ls:backward | |
-|cross traffic (20k+) | 0.322 | backward | left, straight | cross_traffic_penalty_ls:backward | |
-|cross traffic (10k+) | 0.038 | backward | right | cross_traffic_penalty_r:backward | |
+| Fixed Distance Metric  | Addt'l Distance (m)<sup>*</sup> | Variable Name            | Notes                                                                  |
+|------------------------|---------------------------------|--------------------------|------------------------------------------------------------------------|
+| turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties accordingly |
+| stop signs             | 6                               | stop_penalty             | (LADOT: stop/yield)                                                    |
+| traffic signal         | 27                              | signal_penalty           | (LADOT: signalized intersection)                                       |
+| cross traffic (5-10k)  | 78                              | cross_traffic_penalty_ls | left or straight only                                                  |
+| cross traffic (10-20k) | 81                              | cross_traffic_penalty_ls | left or straight only                                                  |
+| cross traffic (20k+)   | 424                             | cross_traffic_penalty_ls | left or straight only                                                  |
+| cross traffic (10k+)   | 50                              | cross_traffic_penalty_r  | right only                                                             |
 
-<sup>*</sup>Variable weights are derived from Broach (2016) commute-based weights
+<sup>*</sup>Multipliers and distances inspired by Broach (2016)
 
-|Generalized Cost	| Formula|
-|--|--|
-|gen_cost_bike:forward:left | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:forward + turn_penalty + no_bike_penalty + parallel_traffic_penalty + cross_traffic_penalty_ls:forward) |
-|gen_cost_bike:forward:straight | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:forward  + no_bike_penalty + cross_traffic_penalty_ls:forward) |
-|gen_cost_bike:forward:right | distance + distance * (slope_penalty:forward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty  + no_bike_penalty + cross_traffic_penalty_r:forward) |
-|gen_cost_bike:backward:left | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + turn_penalty + no_bike_penalty + parallel_traffic_penalty + cross_traffic_penalty_ls:backward) |
-|gen_cost_bike:backward:straight | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + signal_penalty:backward + no_bike_penalty + cross_traffic_penalty_ls:backward) |
-|gen_cost_bike:backward:right | distance + distance * (slope_penalty:backward + stop_penalty:forward + bike_blvd_penalty + bike_path_penalty + turn_penalty + no_bike_penalty + cross_traffic_penalty_r:backward) |
+| Generalized Cost       | Formula                                                                                                                    |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + parallel_traffic_penalty + no_bike_penalty) |
+| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
+| gen_cost_bike:straight | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
+| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r                                                     |
 
 #### Examples:
 | | South Budlong Ave. | Baxster Street | 
@@ -122,41 +116,30 @@ The following datasets are used by Conveyal to define "opportunities" for comput
 | stop_sign_penalty:forward | 0 | 0.005 |
 | stop_sign_penalty:backward | 0.005 | 0.005 |
 
-   
-
-
 ### Pedestrian
-|Length Adjusted Metric|	Distance Multiplier<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
-|--|--|--|--|--|--|
-|distance | 1.0 | forward, backward | left, straight, right | distance | |
-prop upslope 10%+ | 0.99 | forward | left, straight, right | ped_slope_penalty:forward | 
-prop downslope 10%+ | 0.99 | backward | left, straight, right | ped_slope_penalty:backward | 
-unpaved or alleyway | 0.51 | forward, backward | left, straight, right | unpaved_alley_penalty | OSM: highway="alley" OR surface="unpaved"
-busy street | 0.14 | forward, backward | left, straight, right | busy_penalty | OSM: highway=('tertiary' OR 'tertiary_link' OR 'secondary' OR 'secondary_link' OR 'primary' OR 'primary_link' OR 'trunk' OR 'trunk_link' OR 'motorway' OR 'motorway_link'
-neighborhood commercial | -0.28 | forward, backward | left, straight, right | nbd_penalty | 
 
-|Fixed Distance Metric|	Addt'l Distance (m)<sup>*</sup>	|Applicable Directions	|Applicable Turn Types	|Variable Name	|Notes|
-|--|--|--|--|--|--|
-turn | 54 | forward, backward | left, right | turn_penalty | 
-unsignalized arterial crossing | 73 | forward | left, right | unsig_art_xing_penalty_lr:forward | ((13000 <= parallel traffic AADT <= 23000) OR (13000 <= self-edge AADT <= 23000)) AND (unsignalized)
-unsignalized arterial crossing | 73 | forward | straight | unsig_art_xing_penalty_s:forward | (13000 <= cross traffic AADT <= 23000) AND (unsignalized)
-unsignalized arterial crossing | 73 | backward | left, right | unsig_art_xing_penalty_lr:backward | ((13000 <= parallel traffic AADT <= 23000) OR (13000 <= self-edge AADT <= 23000)) AND (unsignalized)
-unsignalized arterial crossing | 73 | backward | straight | unsig_art_xing_penalty_s:backward | (13000 <= cross traffic AADT <= 23000) AND (unsignalized)
-collector crossing w/o crosswalk | 28 | forward | left, right | unmarked_coll_xing_penalty_lr:forward | ((10000 <= parallel traffic AADT < 13000) OR (10000 <= self-edge AADT < 13000)) AND (no crosswalk)
-collector crossing w/o crosswalk | 28 | forward | straight | unmarked_coll_xing_penalty_s:forward | (10000 <= cross traffic AADT < 13000) AND (no crosswalk)
-collector crossing w/o crosswalk | 28 | backward | left, right | unmarked_coll_xing_penalty_lr:backward | ((10000 <= parallel traffic AADT < 13000) OR (10000 <= self-edge AADT < 13000)) AND (no crosswalk)
-collector crossing w/o crosswalk | 28 | backward | straight | unmarked_coll_xing_penalty_s:backward | (10000 <= cross traffic AADT < 13000) AND (no crosswalk)
+| Length Adjusted Metric  |   Length Multiplier<sup>*</sup> | Variable Name         | Notes                                                                                                                                                                     |
+|-------------------------|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| distance                | 1.0                             | distance              |                                                                                                                                                                           |
+| prop link slope 10%+    | 0.99                            | ped_slope_penalty     | upslope for forward direction, downslope for backward direction                                                                                                           |
+| unpaved or alleyway     | 0.51                            | unpaved_alley_penalty | OSM: highway="alley" OR surface="unpaved"                                                                                                                                 |
+| busy street             | 0.14                            | busy_penalty          | OSM: highway=('tertiary' OR 'tertiary_link' OR 'secondary' OR 'secondary_link' OR 'primary' OR 'primary_link' OR 'trunk' OR 'trunk_link' OR 'motorway' OR 'motorway_link' |
+| neighborhood commercial | -0.28                           | nbd_penalty           |                                                                                                                                                                           |
 
-<sup>*</sup>Variable weights and distances are derived from Broach (2016) commute-based weights
+| Fixed Distance Metric            | Addt'l Distance (m)<sup>*</sup> | Variable Name              | Notes                                                                                                                                                                                   |
+|----------------------------------|---------------------------------|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| turn                             | 54                              | turn_penalty               |                                                                                                                                                                                         |
+| unsignalized arterial crossing   | 73                              | unsig_art_xing_penalty     | left or right: ((13000 <= parallel traffic AADT <= 23000) OR (13000 <= self-edge AADT <= 23000)) AND (unsignalized) straight: (13000 <= cross traffic AADT <= 23000) AND (unsignalized) |
+| collector crossing w/o crosswalk | 28                              | unmarked_coll_xing_penalty | left or right: ((10000 <= parallel traffic AADT < 13000) OR (10000 <= self-edge AADT < 13000)) AND (no crosswalk) straight: (10000 <= cross traffic AADT < 13000) AND (no crosswalk)    |
 
-|Generalized Cost	| Formula|
-|--|--|
-|gen_cost_ped:forward:left | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:forward + unmarked_coll_xing_lr:forward)|
-|gen_cost_ped:forward:straight | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_s:forward + unmarked_coll_xing_s:forward)|
-|gen_cost_ped:forward:right | distance + distance * (slope_penalty:forward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:forward + unmarked_coll_xing_lr:forward)|
-|gen_cost_ped:backward:left | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
-|gen_cost_ped:backward:straight | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_s:backward + unmarked_coll_xing_s:backward)|
-|gen_cost_ped:backward:right | distance + distance * (slope_penalty:backward + unpaved_alley_penalty + busy_penalty + nbd_penalty) + (turn_penalty + unsig_art_xing_penalty_lr:backward + unmarked_coll_xing_lr:backward)|
+<sup>*</sup>Multipliers and distances inspired by Broach (2016)
+
+| Generalized Cost      | Formula                                                                                    |
+|-----------------------|--------------------------------------------------------------------------------------------|
+| gen_cost_ped:link     | distance + distance * (slope_penalty + unpaved_alley_penalty + busy_penalty + nbd_penalty) |
+| gen_cost_ped:left     | turn_penalty + unsig_art_xing_penalty + unmarked_coll_xing                                 |
+| gen_cost_ped:straight | turn_penalty + unsig_art_xing_penalty + unmarked_coll_xing                                 |
+| gen_cost_ped:right    | turn_penalty + unsig_art_xing_penalty + unmarked_coll_xing                                 |
 
 #### Examples:
 | | Lanark Street|
@@ -220,5 +203,7 @@ The following images show the LA county OSM roads colored from green to red base
    
    <img src="images/baxter_street.png"  width=70%>
  
- 
- 
+# Land Use Data
+The following datasets are used by Conveyal to define "opportunities" for computing accessibilities and are not required for computing generalized costs on the travel network:
+   - **Land Use** - Additional land use data for use in Conveyal Analysis are available as shapefiles [here](https://resourcesystemsgroupinc-my.sharepoint.com/personal/ben_stabler_rsginc_com1/_layouts/15/onedrive.aspx?originalPath=aHR0cHM6Ly9yZXNvdXJjZXN5c3RlbXNncm91cGluYy1teS5zaGFyZXBvaW50LmNvbS86ZjovZy9wZXJzb25hbC9iZW5fc3RhYmxlcl9yc2dpbmNfY29tMS9FZ205c3hEa2V0NU5tNHBoTEZ2X05zNEJJSjlNZlY1anN6NFM4SHFUNnc2c0ZnP3J0aW1lPTRLZjEyMHpCMTBn&CT=1584409358939&OR=OWA%2DNT&CID=6d731269%2D125c%2Dd14b%2Db1fe%2De357a419fd64&id=%2Fpersonal%2Fben%5Fstabler%5Frsginc%5Fcom1%2FDocuments%2FLADOT%2FLand%20Use). Their contents have been documented in the LADOT_landuse_data_inventory.xlsx available [here](https://resourcesystemsgroupinc-my.sharepoint.com/:x:/g/personal/ben_stabler_rsginc_com1/Ec1iip5AnGlJjmogrsbKyrYBkBqCd9hhzevPk-j-_ox57w?e=M4tZH3).
+   - **Census** - The script to generate Census-based population and household data stored as shapefiles is located in the `scripts/` directory of this repository. The latest data as of March 2020 is included in the Land Use data files linked above.
