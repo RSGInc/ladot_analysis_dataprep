@@ -67,8 +67,6 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | prop link slope 2-4%      | 0.371                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
 | prop link slope 4-6%      | 1.23                          | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
 | prop link slope 6%+       | 3.239                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
-| parallel traffic (10-20k) | 0.091                         | parallel_traffic_penalty |                                                                                            |
-| parallel traffic (20k+)   | 0.231                         | parallel_traffic_penalty |                                                                                            |
 | no bike lane (10-20k)     | 0.368                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (20-30k)     | 1.4                           | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (30k+)       | 7.157                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
@@ -82,15 +80,17 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | cross traffic (10-20k) | 81                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (20k+)   | 424                             | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10k+)   | 50                              | cross_traffic_penalty_r  | right only                                                             |
+| parallel traffic (10-20k) | ?                        | parallel_traffic_penalty |                                                                                            |
+| parallel traffic (20k+)   | ?                         | parallel_traffic_penalty |                                                                                            |
 
 <sup>*</sup>Multipliers and distances inspired by Broach (2016)
 
 | Generalized Cost       | Formula                                                                                                                    |
 |------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + parallel_traffic_penalty + no_bike_penalty) |
-| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
-| gen_cost_bike:straight | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
-| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r                                                     |
+| gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + no_bike_penalty) |
+| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls + parallel_traffic_penalty                                                    |
+| gen_cost_bike:straight | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls + parallel_traffic_penalty                                                    |
+| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r + parallel_traffic_penalty                                                     |
 
 #### Examples:
 | | South Budlong Ave. | Baxster Street | 
