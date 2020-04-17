@@ -88,9 +88,9 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | Generalized Cost       | Formula                                                                                                                    |
 |------------------------|----------------------------------------------------------------------------------------------------------------------------|
 | gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + no_bike_penalty) |
-| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls + parallel_traffic_penalty                                                    |
-| gen_cost_bike:straight | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                   |
-| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r                                                     |
+| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls + parallel_traffic_penalty|
+| gen_cost_bike:straight | stop_penalty + signal_penalty + cross_traffic_penalty_ls|
+| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r |
 
 #### Examples:
 | | South Budlong Ave. | Baxster Street | 
