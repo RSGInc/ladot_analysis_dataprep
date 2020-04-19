@@ -73,15 +73,15 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 
 | Fixed Distance Metric  | Addt'l Distance (m)<sup>*</sup> | Variable Name            | Notes                                                                  |
 |------------------------|---------------------------------|--------------------------|------------------------------------------------------------------------|
-| turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties accordingly |
+| turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties based on the ratio of the coefficient to the original bike turns coefficient |
 | stop signs             | 6                               | stop_penalty             | (LADOT: stop/yield)                                                    |
 | traffic signal         | 27                              | signal_penalty           | (LADOT: signalized intersection)                                       |
 | cross traffic (5-10k)  | 78                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10-20k) | 81                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (20k+)   | 424                             | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10k+)   | 50                              | cross_traffic_penalty_r  | right only                                                             |
-| parallel traffic (10-20k) | ?                        | parallel_traffic_penalty |                                                                                            |
-| parallel traffic (20k+)   | ?                         | parallel_traffic_penalty |                                                                                            |
+| parallel traffic (10-20k) | 117                        | parallel_traffic_penalty | left only                                                                                            |
+| parallel traffic (20k+)   | 297                         | parallel_traffic_penalty | left only                                                                                           |
 
 <sup>*</sup>Multipliers and distances inspired by Broach (2016)
 
