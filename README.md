@@ -2,23 +2,31 @@
 
 This repository houses Python scripts to build networks and land use data for accessibility applications.
 
+# Setting up your development environment
+1. Install Python for your OS ([Anaconda](https://www.continuum.io/downloads) strongly recommended)
+2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation)
+3. Clone/download this repository and navigate to it from a command line terminal.
+4. Install dependencies
+   ```conda env create -f environment.yml```
+5. Activate conda environment:
+   ```conda activate gencosts``
+
 # Network
 The **osm_generalized_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
 
 ## How to Build the Network
-1. Clone/download this repository.
-2. Copy local data files<sup>&dagger;</sup> into the data directory, including:
+1. Copy local data files<sup>&dagger;</sup> into the data directory, including:
    - stop signs
    - traffic signalization
    - bikeways
    - crosswalks
    - traffic volume and speed data
-3. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
-4. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
+2. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
+3. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
    ```
    python osm_generalized_costs.py 
    ```
-4. To use a local .osm instead of pulling OSM data from nominatim on-the-fly, you can use the `-o` flag:
+4. To use a local .osm instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
    ```
    python osm_generalized_costs.py -o <your_osm_file.osm>
    ```
@@ -26,7 +34,7 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
    ```
    python osm_generalized_costs.py -o <your_dem_file.tif>
    ```
-7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+6. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
    - `gen_cost_bike:forward:link`
    - `gen_cost_bike:forward:left`
    - `gen_cost_bike:forward:straight`
@@ -49,7 +57,7 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
    - `speed_offpeak:backward`
    - `aadt`
 
-8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
+7. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
    ```
    python osm_generalized_costs.py -s shp
    ```
