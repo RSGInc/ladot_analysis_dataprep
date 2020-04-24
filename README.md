@@ -7,9 +7,11 @@ This repository houses Python scripts to build networks and land use data for ac
 2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS.
 3. Clone/download this repository and navigate to it from a command line terminal.
 4. Install dependencies:
+
    ```conda env create -f environment.yml```
 5. Activate conda environment:
-   ```conda activate gencosts``
+
+   ```conda activate gencosts```
 
 # Network
 The **osm_generalized_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
