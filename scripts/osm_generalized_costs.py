@@ -40,14 +40,27 @@ addtl_tags = [
     'cycleway', 'cycleway:left', 'cycleway:right', 'bicycle', 'foot',
     'surface']
 custom_tags = [
-    'aadt', 'speed_peak:forward', 'speed_offpeak:forward',
-    'speed_peak:backward', 'speed_offpeak:backward',
-    'gen_cost_bike:forward:left', 'gen_cost_bike:forward:straight',
-    'gen_cost_bike:forward:right', 'gen_cost_bike:backward:left',
-    'gen_cost_bike:backward:straight', 'gen_cost_bike:backward:right',
-    'gen_cost_ped:forward:left', 'gen_cost_ped:forward:straight',
-    'gen_cost_ped:forward:right', 'gen_cost_ped:backward:left',
-    'gen_cost_ped:backward:straight', 'gen_cost_ped:backward:right']
+    'aadt',
+    'speed_peak:forward',
+    'speed_offpeak:forward',
+    'speed_peak:backward',
+    'speed_offpeak:backward',
+    'gen_cost_bike:forward:link',
+    'gen_cost_bike:forward:left',
+    'gen_cost_bike:forward:straight',
+    'gen_cost_bike:forward:right',
+    'gen_cost_bike:backward:link',
+    'gen_cost_bike:backward:left',
+    'gen_cost_bike:backward:straight',
+    'gen_cost_bike:backward:right',
+    'gen_cost_ped:forward:link',
+    'gen_cost_ped:forward:left',
+    'gen_cost_ped:forward:straight',
+    'gen_cost_ped:forward:right',
+    'gen_cost_ped:backward:link',
+    'gen_cost_ped:backward:left',
+    'gen_cost_ped:backward:straight',
+    'gen_cost_ped:backward:right']
 all_edge_tags = [
     tag for tag in default_tags if tag != 'est_width'] + addtl_tags
 
@@ -776,52 +789,48 @@ def append_gen_cost_bike(edges_gdf):
         (edges_gdf['down_pct_dist_6_plus'] * 3.239)
 
     # turns
-    edges_gdf['turn_penalty'] = 0.042
+    edges_gdf['turn_penalty'] = 54
 
     # traffic volume at unsignalized intersections
-    for direction in ['forward', 'backward']:
+    for direc in ['forward', 'backward']:
 
-        edges_gdf['parallel_traffic_penalty:{0}'.format(direction)] = 0
+        edges_gdf['parallel_traffic_penalty:' + direc] = 0
         edges_gdf.loc[
-            (edges_gdf['parallel_traffic:{0}'.format(direction)] >= 10000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'parallel_traffic_penalty:{0}'.format(direction)] = .091
+            (edges_gdf['parallel_traffic:' + direc] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'parallel_traffic_penalty:' + direc] = 117
         edges_gdf.loc[
-            (edges_gdf['parallel_traffic:{0}'.format(direction)] >= 20000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'parallel_traffic_penalty:{0}'.format(direction)] = .231
+            (edges_gdf['parallel_traffic:' + direc] >= 20000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'parallel_traffic_penalty:' + direc] = 297
 
-        edges_gdf['cross_traffic_penalty_ls:{0}'.format(direction)] = 0
+        edges_gdf['cross_traffic_penalty_ls:' + direc] = 0
         edges_gdf.loc[
-            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 5000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'cross_traffic_penalty_ls:{0}'.format(direction)] = .041
+            (edges_gdf['cross_traffic:' + direc] >= 5000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'cross_traffic_penalty_ls:' + direc] = 78
         edges_gdf.loc[
-            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'cross_traffic_penalty_ls:{0}'.format(direction)] = .059
+            (edges_gdf['cross_traffic:' + direc] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'cross_traffic_penalty_ls:' + direc] = 81
         edges_gdf.loc[
-            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 20000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'cross_traffic_penalty_ls:{0}'.format(direction)] = .322
+            (edges_gdf['cross_traffic:' + direc] >= 20000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'cross_traffic_penalty_ls:' + direc] = 424
 
-        edges_gdf['cross_traffic_penalty_r:{0}'.format(direction)] = 0
+        edges_gdf['cross_traffic_penalty_r:' + direc] = 0
         edges_gdf.loc[
-            (edges_gdf['cross_traffic:{0}'.format(direction)] >= 10000) &
-            (pd.isnull(edges_gdf['control_type:{0}'.format(direction)])),
-            'cross_traffic_penalty_r:{0}'.format(direction)] = .038
+            (edges_gdf['cross_traffic:' + direc] >= 10000) &
+            (pd.isnull(edges_gdf['control_type:' + direc])),
+            'cross_traffic_penalty_r:' + direc] = 50
 
-    # traffic signals
-    edges_gdf['signal_penalty:forward'] = (
-        edges_gdf['control_type:forward'] == 'signal') * 0.021
-    edges_gdf['signal_penalty:backward'] = (
-        edges_gdf['control_type:backward'] == 'signal') * 0.021
+        # traffic signals
+        edges_gdf['signal_penalty:' + direc] = (
+            edges_gdf['control_type:' + direc] == 'signal') * 27
 
-    # stop signs
-    edges_gdf['stop_sign_penalty:forward'] = (
-        edges_gdf['control_type:forward'] == 'stop') * 0.005
-    edges_gdf['stop_sign_penalty:backward'] = (
-        edges_gdf['control_type:backward'] == 'stop') * 0.005
+        # stop signs
+        edges_gdf['stop_sign_penalty:' + direc] = (
+            edges_gdf['control_type:' + direc] == 'stop') * 6
 
     # no bike lane
     edges_gdf['no_bike_penalty'] = 0
@@ -843,43 +852,46 @@ def append_gen_cost_bike(edges_gdf):
     # bike path
     edges_gdf['bike_path_penalty'] = 0
     edges_gdf['bike_path_penalty'] = (
-        edges_gdf['bike_infra'] == 'path') * -.016
+        edges_gdf['bike_infra'] == 'path') * -.16
 
     # compute costs
     for direc in ['forward', 'backward']:
+
+        # link penalties are distance dependent so we add them up
+        # and then multiply by the length of the egde
+        dist_dep_penalties = edges_gdf['slope_penalty:' + direc] + \
+            edges_gdf['no_bike_penalty'] + \
+            edges_gdf['bike_blvd_penalty'] + \
+            edges_gdf['bike_path_penalty']
+        colname = 'gen_cost_bike:' + direc + ':link'
+        edges_gdf[colname] = edges_gdf['length'] + \
+            (edges_gdf['length'] * dist_dep_penalties)
+
+        # turn penalties are not distance dependent so we just add up the
+        # relevant penalties depending on the turn type
         for turn_type in ['left', 'straight', 'right']:
             colname = 'gen_cost_bike:' + direc + ':' + turn_type
 
-            # all turn types have slope, stop, and bike infra penalties
-            weights = edges_gdf['slope_penalty:{0}'.format(direc)] + \
-                edges_gdf['stop_sign_penalty:{0}'.format(direc)] + \
-                edges_gdf['no_bike_penalty'] + \
-                edges_gdf['bike_blvd_penalty'] + \
-                edges_gdf['bike_path_penalty']
+            # all turn types have stop sign penalties
+            edges_gdf[colname] = edges_gdf['stop_sign_penalty:' + direc]
 
             # left turns: add traffic signal, turn penalties, parallel traffic,
             # and cross traffic for left turn
             if turn_type == 'left':
-                weights += edges_gdf['signal_penalty:{0}'.format(direc)] + \
+                edges_gdf[colname] += edges_gdf['signal_penalty:' + direc] + \
                     edges_gdf['turn_penalty'] + \
-                    edges_gdf['parallel_traffic_penalty:{0}'.format(direc)] + \
-                    edges_gdf['cross_traffic_penalty_ls:{0}'.format(direc)]
+                    edges_gdf['parallel_traffic_penalty:' + direc] + \
+                    edges_gdf['cross_traffic_penalty_ls:' + direc]
 
-            # straight out of link: add signal penalty, cross traffic for
-            # straight, no bike lane penalty
-
+            # straight out of link: add signal penalty, x-traffic for straight
             elif turn_type == 'straight':
-                weights += edges_gdf['signal_penalty:{0}'.format(direc)] + \
-                    edges_gdf['cross_traffic_penalty_ls:{0}'.format(direc)]
+                edges_gdf[colname] += edges_gdf['signal_penalty:' + direc] + \
+                    edges_gdf['cross_traffic_penalty_ls:' + direc]
 
             # right turns: add turn penalty, cross traffic for right turn
             else:
-                weights = weights + edges_gdf['turn_penalty'] + \
-                    edges_gdf['cross_traffic_penalty_r:{0}'.format(direc)]
-
-            # generalized cost = length + length * weighted penalties
-            edges_gdf[colname] = edges_gdf['length'] + \
-                edges_gdf['length'] * weights
+                edges_gdf[colname] = edges_gdf['turn_penalty'] + \
+                    edges_gdf['cross_traffic_penalty_r:' + direc]
 
     return edges_gdf
 
@@ -908,6 +920,7 @@ def append_gen_cost_ped(edges_gdf):
             'primary', 'primary_link', 'trunk', 'trunk_link',
             'motorway', 'motorway_link'])) * .14
 
+    # compute turn-based penalties
     for direc in ['forward', 'backward']:
 
         # if left or right turn, then the pedestrian will have to cross
@@ -965,40 +978,37 @@ def append_gen_cost_ped(edges_gdf):
             (pd.isnull(edges_gdf['xwalk:{0}'.format(direc)]))) * 28
 
     for direc in ['forward', 'backward']:
+
+        # link penalties are distance dependent so we add them up
+        # and then multiply by the length of the egde
+        colname = 'gen_cost_ped:' + direc + ':link'
+        dist_dep_penalties = edges_gdf[
+            'ped_slope_penalty:{0}'.format(direc)] + \
+            edges_gdf['unpaved_alley_penalty'] + \
+            edges_gdf['busy_penalty']
+        edges_gdf[colname] = edges_gdf['length'] + \
+            (edges_gdf['length'] * dist_dep_penalties)
+
         for turn_type in ['left', 'straight', 'right']:
             colname = 'gen_cost_ped:' + direc + ':' + turn_type
 
-            # all turn types have slope, stop, and bike infra penalties
-            weighted_length = (
-                edges_gdf['ped_slope_penalty:{0}'.format(direc)] +
-                edges_gdf['unpaved_alley_penalty'] +
-                edges_gdf['busy_penalty']) * edges_gdf['length']
+            # turn penalties are not distance dependent so we just add up
+            # the relevant columns
 
             if turn_type != 'straight':
 
-                # fixed turn cost
-                weighted_length += 54
-
-                # unsignalized arterial crossing
-                weighted_length += edges_gdf[
-                    'unsig_art_xing_penalty_lr:{0}'.format(direc)]
-
+                # fixed turn cost + unsignalized arterial crossing +
                 # unmarked collector crossing
-                weighted_length += edges_gdf[
-                    'unmarked_coll_xing_penalty_lr:{0}'.format(direc)]
+                edges[colname] = 54 + \
+                    edges_gdf['unsig_art_xing_penalty_lr:' + direc] + \
+                    edges_gdf['unmarked_coll_xing_penalty_lr:' + direc]
 
             else:
 
-                # unsignalized arterial crossing
-                weighted_length += edges_gdf[
-                    'unsig_art_xing_penalty_s:{0}'.format(direc)]
-
-                # unmarked collector crossing
-                weighted_length += edges_gdf[
-                    'unmarked_coll_xing_penalty_s:{0}'.format(direc)]
-
-            # generalized cost = length + weighted length
-            edges_gdf[colname] = edges_gdf['length'] + weighted_length
+                # unsignalized arterial crossing + unmarked collector crossing
+                edges[colname] = edges_gdf[
+                    'unsig_art_xing_penalty_s:' + direc] + edges_gdf[
+                    'unmarked_coll_xing_penalty_s:' + direc]
 
     return edges_gdf
 
