@@ -2,23 +2,33 @@
 
 This repository houses Python scripts to build networks and land use data for accessibility applications.
 
+# Setting up your development environment
+1. Install Python for your OS ([Anaconda](https://www.continuum.io/downloads) strongly recommended).
+2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS.
+3. Clone/download this repository and navigate to it from a command line terminal.
+4. Install dependencies:
+
+   ```conda env create -f environment.yml```
+5. Activate conda environment:
+
+   ```conda activate gencosts```
+
 # Network
 The **osm_generalized_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
 
 ## How to Build the Network
-1. Clone/download this repository.
-2. Copy local data files<sup>&dagger;</sup> into the data directory, including:
+1. Copy local data files<sup>&dagger;</sup> into the data directory, including:
    - stop signs
    - traffic signalization
    - bikeways
    - crosswalks
    - traffic volume and speed data
-3. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
-4. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
+2. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
+3. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
    ```
    python osm_generalized_costs.py 
    ```
-4. To use a local .osm instead of pulling OSM data from nominatim on-the-fly, you can use the `-o` flag:
+4. To use a local .osm instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
    ```
    python osm_generalized_costs.py -o <your_osm_file.osm>
    ```
@@ -26,7 +36,7 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
    ```
    python osm_generalized_costs.py -o <your_dem_file.tif>
    ```
-7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+6. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
    - `gen_cost_bike:forward:link`
    - `gen_cost_bike:forward:left`
    - `gen_cost_bike:forward:straight`
@@ -49,7 +59,7 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
    - `speed_offpeak:backward`
    - `aadt`
 
-8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
+7. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
    ```
    python osm_generalized_costs.py -s shp
    ```
@@ -67,30 +77,30 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | prop link slope 2-4%      | 0.371                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
 | prop link slope 4-6%      | 1.23                          | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
 | prop link slope 6%+       | 3.239                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
-| parallel traffic (10-20k) | 0.091                         | parallel_traffic_penalty |                                                                                            |
-| parallel traffic (20k+)   | 0.231                         | parallel_traffic_penalty |                                                                                            |
 | no bike lane (10-20k)     | 0.368                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (20-30k)     | 1.4                           | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (30k+)       | 7.157                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 
 | Fixed Distance Metric  | Addt'l Distance (m)<sup>*</sup> | Variable Name            | Notes                                                                  |
 |------------------------|---------------------------------|--------------------------|------------------------------------------------------------------------|
-| turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties accordingly |
+| turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties based on the ratio of the coefficient to the original bike turns coefficient |
 | stop signs             | 6                               | stop_penalty             | (LADOT: stop/yield)                                                    |
 | traffic signal         | 27                              | signal_penalty           | (LADOT: signalized intersection)                                       |
 | cross traffic (5-10k)  | 78                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10-20k) | 81                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (20k+)   | 424                             | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10k+)   | 50                              | cross_traffic_penalty_r  | right only                                                             |
+| parallel traffic (10-20k) | 117                        | parallel_traffic_penalty | left only                                                                                            |
+| parallel traffic (20k+)   | 297                         | parallel_traffic_penalty | left only                                                                                           |
 
 <sup>*</sup>Multipliers and distances inspired by Broach (2016)
 
 | Generalized Cost       | Formula                                                                                                                    |
 |------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + parallel_traffic_penalty + no_bike_penalty) |
-| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
-| gen_cost_bike:straight | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls                                                    |
-| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r                                                     |
+| gen_cost_bike:link     | distance + distance * (bike_blvd_penalty + bike_path_penalty + slope_penalty + no_bike_penalty) |
+| gen_cost_bike:left     | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_ls + parallel_traffic_penalty|
+| gen_cost_bike:straight | stop_penalty + signal_penalty + cross_traffic_penalty_ls|
+| gen_cost_bike:right    | turn_penalty + stop_penalty + signal_penalty + cross_traffic_penalty_r |
 
 #### Examples:
 | | South Budlong Ave. | Baxster Street | 
@@ -99,12 +109,14 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | From Node | 123058787 | 5531221585 |
 | To Node | 123058790 | 26187155 |
 | Length | 89.023 | 225.923 |
-| gen_cost_bike:forward:left | 94.631449 | 828.0568817 |
-| gen_cost_bike:forward:straight | 90.892483 | 819.9501257 |
-| gen_cost_bike:forward:right | 92.761966 | 828.0568817 |
-| gen_cost_bike:backward:left | 93.207081 | 202.089846 |
-| gen_cost_bike:backward:straight | 89.468115 | 193.98309 |
-| gen_cost_bike:backward:right | 93.207081 | 202.089846 |
+| gen_cost_bike:forward:link	| 89.023 | 818.9850357 |
+| gen_cost_bike:forward:left	| 81 | 60 |
+| gen_cost_bike:forward:straight	| 27 | 6 |
+| gen_cost_bike:forward:right	| 54 | 54 |
+| gen_cost_bike:backward:link	| 89.023 | 193.018 |
+| gen_cost_bike:backward:left	| 60 | 60 |
+| gen_cost_bike:backward:straight	| 6 | 6 |
+| gen_cost_bike:backward:right	| 54 | 54 |
 | slope_penalty:forward | 0 | 3.243050056 |
 | slope_penalty:backward | 0 | 0 |
 | bike_path_penalty:forward | 0 | 0 |
@@ -124,7 +136,6 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | prop link slope 10%+    | 0.99                            | ped_slope_penalty     | upslope for forward direction, downslope for backward direction                                                                                                           |
 | unpaved or alleyway     | 0.51                            | unpaved_alley_penalty | OSM: highway="alley" OR surface="unpaved"                                                                                                                                 |
 | busy street             | 0.14                            | busy_penalty          | OSM: highway=('tertiary' OR 'tertiary_link' OR 'secondary' OR 'secondary_link' OR 'primary' OR 'primary_link' OR 'trunk' OR 'trunk_link' OR 'motorway' OR 'motorway_link' |
-| neighborhood commercial | -0.28                           | nbd_penalty           |                                                                                                                                                                           |
 
 | Fixed Distance Metric            | Addt'l Distance (m)<sup>*</sup> | Variable Name              | Notes                                                                                                                                                                                   |
 |----------------------------------|---------------------------------|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -147,12 +158,14 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 |Way ID | [13356087](https://www.openstreetmap.org/way/13356087)|
 |From Node | 123018756 |
 |To Node | 368008589 |
-|gen_cost_ped:forward:left | 108.416 |
-|gen_cost_ped:forward:straight | 54.416 |
-|gen_cost_ped:forward:right | 108.416 |
-|gen_cost_ped:backward:left | 108.416 |
-|gen_cost_ped:backward:straight | 127.416 |
-|gen_cost_ped:backward:right | 108.416 |
+| 'gen_cost_ped:forward:link' |	54.416 |
+| 'gen_cost_ped:forward:left' |	54 |
+| 'gen_cost_ped:forward:straight' |	0 |
+| 'gen_cost_ped:forward:right' |	54 |
+| 'gen_cost_ped:backward:link' |	54.416 |
+| 'gen_cost_ped:backward:left' |	54 |
+| 'gen_cost_ped:backward:straight' |	73 |
+| 'gen_cost_ped:backward:right' |	54 |
 |unsig_art_xing_penalty_lr:forward | 0 |
 |unsig_art_xing_penalty_s:forward | 0 |
 |unsig_art_xing_penalty_lr:backward | 0 |
