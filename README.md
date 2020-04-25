@@ -109,12 +109,14 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | From Node | 123058787 | 5531221585 |
 | To Node | 123058790 | 26187155 |
 | Length | 89.023 | 225.923 |
-| gen_cost_bike:forward:left | 94.631449 | 828.0568817 |
-| gen_cost_bike:forward:straight | 90.892483 | 819.9501257 |
-| gen_cost_bike:forward:right | 92.761966 | 828.0568817 |
-| gen_cost_bike:backward:left | 93.207081 | 202.089846 |
-| gen_cost_bike:backward:straight | 89.468115 | 193.98309 |
-| gen_cost_bike:backward:right | 93.207081 | 202.089846 |
+| gen_cost_bike:forward:link	| 89.023 | 818.9850357 |
+| gen_cost_bike:forward:left	| 81 | 60 |
+| gen_cost_bike:forward:straight	| 27 | 6 |
+| gen_cost_bike:forward:right	| 54 | 54 |
+| gen_cost_bike:backward:link	| 89.023 | 193.018 |
+| gen_cost_bike:backward:left	| 60 | 60 |
+| gen_cost_bike:backward:straight	| 6 | 6 |
+| gen_cost_bike:backward:right	| 54 | 54 |
 | slope_penalty:forward | 0 | 3.243050056 |
 | slope_penalty:backward | 0 | 0 |
 | bike_path_penalty:forward | 0 | 0 |
@@ -156,12 +158,14 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 |Way ID | [13356087](https://www.openstreetmap.org/way/13356087)|
 |From Node | 123018756 |
 |To Node | 368008589 |
-|gen_cost_ped:forward:left | 108.416 |
-|gen_cost_ped:forward:straight | 54.416 |
-|gen_cost_ped:forward:right | 108.416 |
-|gen_cost_ped:backward:left | 108.416 |
-|gen_cost_ped:backward:straight | 127.416 |
-|gen_cost_ped:backward:right | 108.416 |
+| 'gen_cost_ped:forward:link' |	54.416 |
+| 'gen_cost_ped:forward:left' |	54 |
+| 'gen_cost_ped:forward:straight' |	0 |
+| 'gen_cost_ped:forward:right' |	54 |
+| 'gen_cost_ped:backward:link' |	54.416 |
+| 'gen_cost_ped:backward:left' |	54 |
+| 'gen_cost_ped:backward:straight' |	73 |
+| 'gen_cost_ped:backward:right' |	54 |
 |unsig_art_xing_penalty_lr:forward | 0 |
 |unsig_art_xing_penalty_s:forward | 0 |
 |unsig_art_xing_penalty_lr:backward | 0 |
