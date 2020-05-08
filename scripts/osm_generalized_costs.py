@@ -92,7 +92,9 @@ def get_integer_bbox(nodes_gdf):
     return min_x, min_y, max_x, max_y
 
 
-def format_dem_url(x, y, dem_formattable_path=dem_formattable_path, dem_formattable_fname=dem_formattable_fname):
+def format_dem_url(
+        x, y, dem_formattable_path=dem_formattable_path,
+        dem_formattable_fname=dem_formattable_fname):
     """
     Construct full url of USGS DEM file.
 
@@ -176,7 +178,9 @@ def convert_adf_to_gtiff(fname, data_dir=data_dir):
     return
 
 
-def get_all_dems(min_x, min_y, max_x, max_y, dem_formattable_path, dem_formattable_fname=dem_formattable_fname):
+def get_all_dems(
+        min_x, min_y, max_x, max_y, dem_formattable_path,
+        dem_formattable_fname=dem_formattable_fname):
     """
     Download all 1-arc second DEM data needed to cover
     OSM network bounds
@@ -420,7 +424,10 @@ def get_nearest_nodes_to_features(nodes_gdf, features_gdf):
     return result
 
 
-def assign_traffic_control(G, nodes_gdf, edges_gdf, data_dir=data_dir, stop_signs_fname=stop_signs_fname, traffic_signals_fname=traffic_signals_fname, local_infra_data=True):
+def assign_traffic_control(
+        G, nodes_gdf, edges_gdf, data_dir=data_dir,
+        stop_signs_fname=stop_signs_fname,
+        traffic_signals_fname=traffic_signals_fname, local_infra_data=True):
     """
     Assign traffic control type column to edges, forward and backward.
 
@@ -510,7 +517,9 @@ def assign_traffic_control(G, nodes_gdf, edges_gdf, data_dir=data_dir, stop_sign
 
 def assign_bike_infra(edges_gdf, local_infra_data=True):
     """
-    Assign bicycle infrastructure type to network edges
+    Matches external bicycle infrastructure data to OSM
+    network edges.
+
 
     Args:
         edges_gdf : geopandas.GeoDataFrame
@@ -522,6 +531,9 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
     """
 
+    # assign bike infra data from external (non-OSM) data sources.
+    # we will call these attributes "more_bike_infra" to distinguish
+    # from the primary OSM-derived attributes
     if local_infra_data:
 
         # load bike infra shapefile
@@ -531,21 +543,20 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
             bikeways = bikeways.to_crs(edges_gdf.crs)
 
         # extract points from lines at intervals  of 5m
-
         # NOTE: This process can take ~2 hours to run. If you don't
         # care as much about 100% accuracy of bike matching, you can
-        # replace this section with the interpolation that is
+        # replace vertex redistribution with the interpolation that is
         # commented out below. This will just create 9 points for each
-        # edges instead of sampling every 3m.
+        # edges instead of sampling every 5m.
+
+        bikeways['points'] = bikeways['geometry'].apply(
+            lambda x: ox.redistribute_vertices(x, 5))
 
         # bikeways['points'] = bikeways['geometry'].apply(
         #     lambda x: [x.interpolate(i, normalized=True) for i in [
         #         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
 
-        bikeways['points'] = bikeways['geometry'].apply(
-            lambda x: ox.redistribute_vertices(x, 5))
-
-        # store points in a new dataframe
+        # store points in a new dataframe.
         bike_points = pd.DataFrame()
         for i, row in tqdm(bikeways.iterrows(), total=len(bikeways)):
             for geom in row['points']:
@@ -562,13 +573,19 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
         offset = 4
         bbox = bike_points.bounds + [-offset, -offset, offset, offset]
 
-        # intersect bounding boxes with edges and retain indices of edges
+        # intersect each bounding boxes with network edges and retain
+        # indices of intersecting edges
         hits = bbox.apply(
             lambda row: list(edges_gdf.sindex.intersection(row)), axis=1)
+
+        # create temp dataframe with one row for each point/edge hit
+        # combination (each point may have multiple hits)
         tmp = pd.DataFrame({
+
             # index of points table
             "pt_idx": np.repeat(hits.index, hits.apply(len)),
-            # ordinal position of line - access via iloc later
+
+            # ordinal position of edge - access via iloc later
             "line_i": np.concatenate(hits.values)
         })
 
@@ -579,7 +596,7 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
                 columns={'geometry': 'point'}), on="pt_idx")
         tmp = gpd.GeoDataFrame(tmp, geometry="geometry", crs=bike_points.crs)
 
-        # retain only the nearest edge to each point
+        # retain only the nearest edge to each point.
         tmp["snap_dist"] = tmp.geometry.distance(gpd.GeoSeries(tmp.point))
         tmp = tmp.sort_values(by=["snap_dist"])
         closest = tmp.groupby("pt_idx").first()
@@ -587,24 +604,27 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
             count=('more_bike_infra', 'count'),
             mode=('more_bike_infra', pd.Series.mode))
 
-        # take the mode as the infra type for edges that matched
-        # to multiple bike points
+        # now each point maps to one edge, but a given edge may be
+        # associated with multiple points. to assign infra characteristics
+        # to that edge we just take the mode.
         bike_infra['mode'] = bike_infra['mode'].apply(
             lambda x: x if isinstance(x, str) else x[0])
 
         # retain edges only if they intersected with more than one point
         bike_infra = bike_infra[bike_infra['count'] > 1]
 
-        # merge back to the main edges table
+        # add new bike infra attributes to the main edges table
         edges_gdf.loc[:, 'more_bike_infra'] = None
         edges_gdf.loc[
             bike_infra.index, 'more_bike_infra'] = bike_infra['mode'].values
 
-        bike_points.to_file(os.path.join(data_dir, "bike_points"))
+        # save the bike points to disk for external data validation
+        # bike_points.to_file(os.path.join(data_dir, "bike_points"))
 
     else:
         edges_gdf.loc[:, 'more_bike_infra'] = None
 
+    # the main "bike_infra" attributes come directly from OSM.
     edges_gdf['bike_infra'] = None
 
     if ('cycleway' in edges_gdf.columns) & ('bicycle' in edges_gdf.columns):
@@ -689,7 +709,9 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
     return edges_gdf
 
 
-def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwalk_fname, local_infra_data=True):
+def assign_ped_infra(
+        G, nodes_gdf, edges_gdf, data_dir=data_dir,
+        xwalk_fname=xwalk_fname, local_infra_data=True):
     """
     Assigns pedestrian infrastructure types to network edges
 
@@ -750,12 +772,15 @@ def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwa
                 (xwalks['CrossType'].str.contains('Uncontrolled', na=False))])
         nodes.loc[nodes_w_unsig_xwalks, 'xwalk'] = 'unsig'
         nodes.loc[
-            (nodes['highway'].str.contains('crossing', na=False)), 'xwalk'] = 'unsig'
+            (nodes['highway'].str.contains('crossing', na=False)),
+            'xwalk'] = 'unsig'
 
     else:
 
         # assume all crosswalks are unsignalized
-        nodes.loc[nodes['highway'].str.contains('crossing', na=False), 'xwalk'] = 'unsig'
+        nodes.loc[
+            nodes['highway'].str.contains('crossing', na=False),
+            'xwalk'] = 'unsig'
 
     edges['xwalk:backward'] = None
     edges.loc[:, 'xwalk:backward'] = nodes.loc[edges['u'], 'xwalk'].values
@@ -763,6 +788,71 @@ def assign_ped_infra(G, nodes_gdf, edges_gdf, data_dir=data_dir, xwalk_fname=xwa
     edges.loc[:, 'xwalk:forward'] = nodes.loc[edges['v'], 'xwalk'].values
 
     return edges
+
+
+def conveyal_tags(edges_gdf):
+    """
+    Convert attributes to generic tag names for gen cost
+    computation by Conveyal.
+
+    Args:
+        edges_gdf: geopandas.GeoDataFrame object
+
+    Returns:
+        edges_gdf: geopandas.GeoDataFrame
+    """
+
+    # slopes
+    edges_gdf['slope_1:forward'] = edges_gdf['up_pct_dist_2_4']
+    edges_gdf['slope_2:forward'] = edges_gdf['up_pct_dist_4_6']
+    edges_gdf['slope_3:forward'] = edges_gdf['up_pct_dist_6_plus']
+    edgdes_gdf['slope_4:forward'] = edges_gdf['up_pct_dist_10_plus']
+    edges_gdf['slope_1:backward'] = edges_gdf['down_pct_dist_2_4']
+    edges_gdf['slope_2:backward'] = edges_gdf['down_pct_dist_4_6']
+    edges_gdf['slope_3:backward'] = edges_gdf['down_pct_dist_6_plus']
+    edgdes_gdf['slope_4:backward'] = edges_gdf['down_pct_dist_10_plus']
+
+    # aadt
+    edges_gdf['self_aadt'] = edges_gdf['aadt']
+    edges_gdf['cross_aadt:forward'] = edges_gdf['cross_traffic:forward']
+    edges_gdf['cross_aadt:backward'] = edges_gdf['cross_traffic:backward']
+    edges_gdf['parallel_aadt:forward'] = edges_gdf['parallel_traffic:forward']
+    edges_gdf[
+        'parallel_aadt:backward'] = edges_gdf['parallel_traffic:backward']
+
+    # stops and signals
+    edges_gdf[
+        'uncontrolled:forward'] = pd.isnull(edges_gdf['control_type:forward'])
+    edges_gdf['stop:forward'] = edges_gdf['control_type:forward'] == 'stop'
+    edges_gdf['signal:forward'] = edges_gdf['control_type:forward'] == 'signal'
+    edges_gdf[
+        'uncontrolled:backward'] = pd.isnull(
+            edges_gdf['control_type:backward'])
+    edges_gdf['stop:backward'] = edges_gdf['control_type:backward'] == 'stop'
+    edges_gdf[
+        'signal:backward'] = edges_gdf['control_type:backward'] == 'signal'
+
+    # bike infra
+    edges_gdf['bike_infra_0'] = edges_gdf['bike_infra'] == 'no'
+    edges_gdf['bike_infra_1'] = edges_gdf['bike_infra'] == 'blvd'
+    edges_gdf['bike_infra_2'] = edges_gdf['bike_infra'] == 'path'
+
+    # ped infra
+    edges_gdf['unpaved_alley'] = (
+        edges_gdf['highway'] == 'alley') | (edges_gdf['surface'] == 'unpaved')
+    edges_gdf['busy'] = edges_gdf['highway'].isin([
+        'tertiary', 'tertiary_link', 'secondary', 'secondary_link',
+        'primary', 'primary_link', 'trunk', 'trunk_link',
+        'motorway', 'motorway_link'])
+
+    edges_gdf['xwalk_0:forward'] = pd.isnull(edges_gdf['xwalk:forward'])
+    edges_gdf['xwalk_1:forward'] = edges_gdf['xwalk:forward'] == 'unsig'
+    edges_gdf['xwalk_2:forward'] = edges_gdf['xwalk:forward'] == 'signal'
+    edges_gdf['xwalk_0:backward'] = pd.isnull(edges_gdf['xwalk:backward'])
+    edges_gdf['xwalk_1:backward'] = edges_gdf['xwalk:backward'] == 'unsig'
+    edges_gdf['xwalk_2:backward'] = edges_gdf['xwalk:backward'] == 'signal'
+
+    return edges_gdf
 
 
 def append_gen_cost_bike(edges_gdf):
@@ -902,10 +992,10 @@ def append_gen_cost_ped(edges_gdf):
     statistics and infrastructure.
 
     Args:
-        edges_gdf: geopandas.GeoDataFrame object 
+        edges_gdf: geopandas.GeoDataFrame object
 
     Returns:
-        edges_gdf: geopandas.GeoDataFrame object 
+        edges_gdf: geopandas.GeoDataFrame object
     """
     edges_gdf['ped_slope_penalty:forward'] = \
         edges_gdf['up_pct_dist_10_plus'] * .99
@@ -1023,7 +1113,7 @@ def get_speeds_and_volumes(data_dir):
             (relative) path to project data directory
 
     Returns:
-        speeds: geopandas.GeoDataFrame of speed data keyed on 
+        speeds: geopandas.GeoDataFrame of speed data keyed on
             OSM edge IDs
         aadt: geopandas.GeoDataFrame of traffic volume data
             keyed on OSM edge IDs
@@ -1100,11 +1190,12 @@ def process_volumes(edges_gdf, edges_w_vol_gdf):
             only those edges that have volume data
 
     Returns:
-        edges_gdf: geopandas.GeoDataFrame object 
+        edges_gdf: geopandas.GeoDataFrame object
     """
 
     edges_gdf.loc[:, 'bearing:forward'] = edges_gdf['bearing'].values
-    edges_gdf.loc[:, 'bearing:backward'] = (edges_gdf['bearing'].values + 180) % 360
+    edges_gdf.loc[:, 'bearing:backward'] = (
+        edges_gdf['bearing'].values + 180) % 360
 
     for i, edge in tqdm(edges_gdf.iterrows(), total=len(edges_gdf)):
 
