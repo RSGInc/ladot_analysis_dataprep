@@ -23,14 +23,14 @@ osm_mode = 'otf'
 dem_mode = 'otf'
 local_infra_data = True
 local_volume_data = True
-save_as = 'osm'
+save_as = 'pbf'
 data_dir = '../data/'
 stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
 xwalk_fname = 'Crosswalks/Crosswalks.shp'
 traffic_signals_fname = 'SignalizedIntersections_forCity/' + \
     'SignalizedIntersections.shp'
 bikeways_fname = 'Bikeways_As_of_7302019/Bikeways_7302019.shp'
-place = 'Los Angeles County, California, USA'
+place = 'Financial District, Los Angeles'
 dem_formattable_path = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/' + \
     'Elevation/1/TIFF/n{0}w{1}/'
 dem_formattable_fname = 'USGS_1_n{0}w{1}.tif'
@@ -42,25 +42,31 @@ addtl_tags = [
 custom_tags = [
     'aadt',
     'speed_peak:forward',
-    'speed_offpeak:forward',
     'speed_peak:backward',
+    'speed_offpeak:forward',
     'speed_offpeak:backward',
-    'gen_cost_bike:forward:link',
-    'gen_cost_bike:forward:left',
-    'gen_cost_bike:forward:straight',
-    'gen_cost_bike:forward:right',
-    'gen_cost_bike:backward:link',
-    'gen_cost_bike:backward:left',
-    'gen_cost_bike:backward:straight',
-    'gen_cost_bike:backward:right',
-    'gen_cost_ped:forward:link',
-    'gen_cost_ped:forward:left',
-    'gen_cost_ped:forward:straight',
-    'gen_cost_ped:forward:right',
-    'gen_cost_ped:backward:link',
-    'gen_cost_ped:backward:left',
-    'gen_cost_ped:backward:straight',
-    'gen_cost_ped:backward:right']
+    'slope_1:forward',
+    'slope_2:forward',
+    'slope_3:forward',
+    'slope_4:forward',
+    'slope_1:backward',
+    'slope_2:backward',
+    'slope_3:backward',
+    'slope_4:backward',
+    'self_aadt',
+    'cross_aadt:forward',
+    'cross_aadt:backward',
+    'parallel_aadt:forward',
+    'parallel_aadt:backward',
+    'control_type:forward',
+    'control_type:backward',
+    'bike_infra:forward',
+    'bike_infra:backward',
+    'unpaved_alley',
+    'busy',
+    'xwalk:forward',
+    'xwalk:backward'
+]
 all_edge_tags = [
     tag for tag in default_tags if tag != 'est_width'] + addtl_tags
 
@@ -69,7 +75,7 @@ ox.config(
     osm_xml_way_tags=all_edge_tags + custom_tags,
     all_oneway=True)
 
-# all no duplicate edges!!!!
+# no duplicate edges!!!!
 ox.settings.bidirectional_network_types = []
 
 
@@ -628,14 +634,6 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
     edges_gdf['bike_infra'] = None
 
     if ('cycleway' in edges_gdf.columns) & ('bicycle' in edges_gdf.columns):
-        # no bike lane
-        edges_gdf.loc[
-            (
-                (pd.isnull(edges_gdf['cycleway'])) |
-                (edges_gdf['cycleway'] == 'no') |
-                (edges_gdf['bicycle'] == 'no')
-            ) &
-            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
         edges_gdf.loc[
@@ -653,12 +651,6 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
             (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
 
     elif 'cycleway' in edges_gdf.columns:
-        # no bike lane
-        edges_gdf.loc[
-            (
-                (pd.isnull(edges_gdf['cycleway'])) |
-                (edges_gdf['cycleway'] == 'no')) &
-            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
         edges_gdf.loc[
@@ -672,10 +664,6 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
             (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
 
     elif 'bicycle' in edges_gdf.columns:
-        # no bike lane
-        edges_gdf.loc[
-            (edges_gdf['bicycle'] == 'no') &
-            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
         edges_gdf.loc[
@@ -692,9 +680,6 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
             (edges_gdf['more_bike_infra'] == 'Path'), 'bike_infra'] = 'path'
 
     else:
-        # no bike lane
-        edges_gdf.loc[
-            (edges_gdf['more_bike_infra'] is None), 'bike_infra'] = 'no'
 
         # shared lane
         edges_gdf.loc[
@@ -790,7 +775,7 @@ def assign_ped_infra(
     return edges
 
 
-def conveyal_tags(edges_gdf):
+def generate_conveyal_tags(edges_gdf):
     """
     Convert attributes to generic tag names for gen cost
     computation by Conveyal.
@@ -806,11 +791,11 @@ def conveyal_tags(edges_gdf):
     edges_gdf['slope_1:forward'] = edges_gdf['up_pct_dist_2_4']
     edges_gdf['slope_2:forward'] = edges_gdf['up_pct_dist_4_6']
     edges_gdf['slope_3:forward'] = edges_gdf['up_pct_dist_6_plus']
-    edgdes_gdf['slope_4:forward'] = edges_gdf['up_pct_dist_10_plus']
+    edges_gdf['slope_4:forward'] = edges_gdf['up_pct_dist_10_plus']
     edges_gdf['slope_1:backward'] = edges_gdf['down_pct_dist_2_4']
     edges_gdf['slope_2:backward'] = edges_gdf['down_pct_dist_4_6']
     edges_gdf['slope_3:backward'] = edges_gdf['down_pct_dist_6_plus']
-    edgdes_gdf['slope_4:backward'] = edges_gdf['down_pct_dist_10_plus']
+    edges_gdf['slope_4:backward'] = edges_gdf['down_pct_dist_10_plus']
 
     # aadt
     edges_gdf['self_aadt'] = edges_gdf['aadt']
@@ -821,21 +806,13 @@ def conveyal_tags(edges_gdf):
         'parallel_aadt:backward'] = edges_gdf['parallel_traffic:backward']
 
     # stops and signals
-    edges_gdf[
-        'uncontrolled:forward'] = pd.isnull(edges_gdf['control_type:forward'])
-    edges_gdf['stop:forward'] = edges_gdf['control_type:forward'] == 'stop'
-    edges_gdf['signal:forward'] = edges_gdf['control_type:forward'] == 'signal'
-    edges_gdf[
-        'uncontrolled:backward'] = pd.isnull(
-            edges_gdf['control_type:backward'])
-    edges_gdf['stop:backward'] = edges_gdf['control_type:backward'] == 'stop'
-    edges_gdf[
-        'signal:backward'] = edges_gdf['control_type:backward'] == 'signal'
+    # edges_gdf['control_type:forward'] and edges_gdf['control_type:backward']
+    # already computed
 
     # bike infra
-    edges_gdf['bike_infra_0'] = edges_gdf['bike_infra'] == 'no'
-    edges_gdf['bike_infra_1'] = edges_gdf['bike_infra'] == 'blvd'
-    edges_gdf['bike_infra_2'] = edges_gdf['bike_infra'] == 'path'
+    edges_gdf['bike_infra:forward'] = edges_gdf['bike_infra']
+    edges_gdf['bike_infra:backward'] = edges_gdf['bike_infra']
+    edges_gdf['bike_infra_0:forward'] = pd.isnull(edges_gdf['bike_infra'])
 
     # ped infra
     edges_gdf['unpaved_alley'] = (
@@ -845,12 +822,7 @@ def conveyal_tags(edges_gdf):
         'primary', 'primary_link', 'trunk', 'trunk_link',
         'motorway', 'motorway_link'])
 
-    edges_gdf['xwalk_0:forward'] = pd.isnull(edges_gdf['xwalk:forward'])
-    edges_gdf['xwalk_1:forward'] = edges_gdf['xwalk:forward'] == 'unsig'
-    edges_gdf['xwalk_2:forward'] = edges_gdf['xwalk:forward'] == 'signal'
-    edges_gdf['xwalk_0:backward'] = pd.isnull(edges_gdf['xwalk:backward'])
-    edges_gdf['xwalk_1:backward'] = edges_gdf['xwalk:backward'] == 'unsig'
-    edges_gdf['xwalk_2:backward'] = edges_gdf['xwalk:backward'] == 'signal'
+    # edges_gdf['xwalk:forward'], edges_gdf['xwalk:backward'] already computed
 
     return edges_gdf
 
@@ -926,13 +898,13 @@ def append_gen_cost_bike(edges_gdf):
     edges_gdf['no_bike_penalty'] = 0
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 10000) &
-        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 0.368
+        (pd.isnull(edges_gdf['bike_infra'])), 'no_bike_penalty'] = 0.368
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 20000) &
-        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 1.4
+        (pd.isnull(edges_gdf['bike_infra'])), 'no_bike_penalty'] = 1.4
     edges_gdf.loc[
         (edges_gdf['aadt'] >= 30000) &
-        (edges_gdf['bike_infra'] == 'no'), 'no_bike_penalty'] = 7.157
+        (pd.isnull(edges_gdf['bike_infra'])), 'no_bike_penalty'] = 7.157
 
     # bike blvd
     edges_gdf['bike_blvd_penalty'] = 0
@@ -1235,8 +1207,7 @@ def process_volumes(edges_gdf, edges_w_vol_gdf):
 if __name__ == '__main__':
 
     # ingest command line args
-    parser = argparse.ArgumentParser(
-        description='Get slope statistics for OSM network')
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         '-o', '--osm-filename', action='store', dest='osm_fname',
         help='local OSM XML file to use instead of grabbing data on-the-fly')
@@ -1248,7 +1219,7 @@ if __name__ == '__main__':
         help='valid nominatim place name')
     parser.add_argument(
         '-s', '--save-as', action='store', dest='save_as',
-        choices=['osm', 'shp'], help='output file type')
+        choices=['osm', 'pbf', 'shp'], help='output file type')
     parser.add_argument(
         '-i', '--infra-off', action='store_true', dest='infra_off',
         help='do not use infrastructure in generalized cost calculations')
@@ -1485,13 +1456,15 @@ if __name__ == '__main__':
         'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
     print('Done.')
 
-    # get generalized costs for bike routing
-    print('Generating generalized costs for bike routing.')
-    edges = append_gen_cost_bike(edges)
+    edges = generate_conveyal_tags(edges)
 
-    # get generalized costs for ped routing
-    print('Generating generalized costs for pedestrian routing.')
-    edges = append_gen_cost_ped(edges)
+    # # get generalized costs for bike routing
+    # print('Generating generalized costs for bike routing.')
+    # edges = append_gen_cost_bike(edges)
+
+    # # get generalized costs for ped routing
+    # print('Generating generalized costs for pedestrian routing.')
+    # edges = append_gen_cost_ped(edges)
 
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs(epsg=4326)
@@ -1505,34 +1478,67 @@ if __name__ == '__main__':
         ox.save_gdf_shapefile(edges[[
             col for col in ox.settings.osm_xml_way_tags] + [
             'osmid', 'u', 'v',
-            'parallel_traffic:forward', 'parallel_traffic:backward',
-            'cross_traffic:forward', 'cross_traffic:backward',
-            'control_type:forward', 'control_type:backward',
-            'xwalk:forward', 'xwalk:backward',
-            'bike_infra', 'more_bike_infra',
-            'slope_penalty:forward', 'slope_penalty:backward',
-            'parallel_traffic_penalty:forward',
-            'parallel_traffic_penalty:backward',
-            'cross_traffic_penalty_ls:forward',
-            'cross_traffic_penalty_ls:backward',
-            'cross_traffic_penalty_r:forward',
-            'cross_traffic_penalty_r:backward',
-            'no_bike_penalty',
-            'bike_path_penalty', 'bike_blvd_penalty',
-            'signal_penalty:forward', 'signal_penalty:backward',
-            'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
-            'ped_slope_penalty:forward', 'ped_slope_penalty:backward',
-            'unpaved_alley_penalty', 'busy_penalty',
-            'unsig_art_xing_penalty_lr:forward',
-            'unsig_art_xing_penalty_s:forward',
-            'unsig_art_xing_penalty_lr:backward',
-            'unsig_art_xing_penalty_s:backward',
-            'unmarked_coll_xing_penalty_lr:forward',
-            'unmarked_coll_xing_penalty_s:forward',
-            'unmarked_coll_xing_penalty_lr:backward',
-            'unmarked_coll_xing_penalty_s:backward',
+            # 'parallel_traffic:forward', 'parallel_traffic:backward',
+            # 'cross_traffic:forward', 'cross_traffic:backward',
+            # 'control_type:forward', 'control_type:backward',
+            # 'xwalk:forward', 'xwalk:backward',
+            # 'bike_infra', 'more_bike_infra',
+            # 'slope_penalty:forward', 'slope_penalty:backward',
+            # 'parallel_traffic_penalty:forward',
+            # 'parallel_traffic_penalty:backward',
+            # 'cross_traffic_penalty_ls:forward',
+            # 'cross_traffic_penalty_ls:backward',
+            # 'cross_traffic_penalty_r:forward',
+            # 'cross_traffic_penalty_r:backward',
+            # 'no_bike_penalty',
+            # 'bike_path_penalty', 'bike_blvd_penalty',
+            # 'signal_penalty:forward', 'signal_penalty:backward',
+            # 'stop_sign_penalty:forward', 'stop_sign_penalty:backward',
+            # 'ped_slope_penalty:forward', 'ped_slope_penalty:backward',
+            # 'unpaved_alley_penalty', 'busy_penalty',
+            # 'unsig_art_xing_penalty_lr:forward',
+            # 'unsig_art_xing_penalty_s:forward',
+            # 'unsig_art_xing_penalty_lr:backward',
+            # 'unsig_art_xing_penalty_s:backward',
+            # 'unmarked_coll_xing_penalty_lr:forward',
+            # 'unmarked_coll_xing_penalty_s:forward',
+            # 'unmarked_coll_xing_penalty_lr:backward',
+            # 'unmarked_coll_xing_penalty_s:backward',
+            # 'slope_1:forward',
+            # 'slope_2:forward',
+            # 'slope_3:forward',
+            # 'slope_4:forward',
+            # 'slope_1:backward',
+            # 'slope_2:backward',
+            # 'slope_3:backward',
+            # 'slope_4:backward',
+            # 'self_aadt',
+            # 'cross_aadt:forward',
+            # 'cross_aadt:backward',
+            # 'parallel_aadt:forward',
+            # 'parallel_aadt:backward',
+            # 'uncontrolled:forward',
+            # 'stop:forward',
+            # 'signal:forward',
+            # 'uncontrolled:backward',
+            # 'stop:backward',
+            # 'signal:backward',
+            # 'bike_infra_0:forward',
+            # 'bike_infra_1:forward',
+            # 'bike_infra_2:forward',
+            # 'bike_infra_0:backward',
+            # 'bike_infra_1:backward',
+            # 'bike_infra_2:backward',
+            # 'unpaved_alley',
+            # 'busy',
+            # 'xwalk_0:forward',
+            # 'xwalk_1:forward',
+            # 'xwalk_2:forward',
+            # 'xwalk_0:backward',
+            # 'xwalk_1:backward',
+            # 'xwalk_2:backward',
             'geometry']], 'edges', data_dir + out_fname)
-    elif save_as == 'osm':
+    elif save_as in ['osm', 'pbf']:
         print('Saving graph as OSM XML. This might take a while...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
@@ -1541,10 +1547,13 @@ if __name__ == '__main__':
             edge_tags=ox.settings.osm_xml_way_tags,
             edge_attrs=ox.settings.osm_xml_way_attrs,
             merge_edges=False)
-        os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
-            os.path.join(data_dir, out_fname)))
-        print('File now available at {0}'.format(
-            os.path.join(data_dir, out_fname + '.osm.pbf')))
+
+        if save_as == 'pbf':
+            print('Converting OSM XML to .pbf')
+            os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
+                os.path.join(data_dir, out_fname)))
+            print('File now available at {0}'.format(
+                os.path.join(data_dir, out_fname + '.osm.pbf')))
     else:
         raise ValueError(
             "{0} is not a valid output file type. See --help for more "
