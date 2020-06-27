@@ -14,7 +14,7 @@ This repository houses Python scripts to build networks and land use data for ac
    ```conda activate gencosts```
 
 # Network
-The **osm_generalized_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
+The **osm_gen_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
 
 ## How to Build the Network
 1. Copy local data files<sup>&dagger;</sup> into the data directory, including:
@@ -24,44 +24,52 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
    - crosswalks
    - traffic volume and speed data
 2. If working with a static, local OSM extract, put your your .osm file into the data directory as well.
-3. To run the analysis with all defaults, simply navigate to the `scripts/` directory of this repository and run the following command:
+3. To run the analysis with all defaults, simply navigate to the root directory of this repository and execute the following command:
    ```
-   python osm_generalized_costs.py 
+   python osm_gen_costs.py 
    ```
-4. To use a local .osm instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
+4. Or specify a place name to test things out on a smaller geographic area:
    ```
-   python osm_generalized_costs.py -o <your_osm_file.osm>
+   python osm_gen_costs.py -p "Financial District, Los Angeles"
    ```
-5. If you've already run this script before, you can save time by using the `-d` flag and pointing the script to the elevation data (DEM) .tif that was generated on-the-fly last time the script was run:
+5. To use a local .osm OSM XML file instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
    ```
-   python osm_generalized_costs.py -o <your_dem_file.tif>
+   python osm_gen_costs.py -o <your_osm_file.osm>
    ```
-6. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
-   - `gen_cost_bike:forward:link`
-   - `gen_cost_bike:forward:left`
-   - `gen_cost_bike:forward:straight`
-   - `gen_cost_bike:forward:right`
-   - `gen_cost_bike:backward:link`
-   - `gen_cost_bike:backward:left`
-   - `gen_cost_bike:backward:straight`
-   - `gen_cost_bike:backward:right`
-   - `gen_cost_ped:forward:link`
-   - `gen_cost_ped:forward:left`
-   - `gen_cost_ped:forward:straight`
-   - `gen_cost_ped:forward:right`
-   - `gen_cost_ped:backward:link`
-   - `gen_cost_ped:backward:left`
-   - `gen_cost_ped:backward:straight`
-   - `gen_cost_ped:backward:right`
-   - `speed_peak:forward`
-   - `speed_offpeak:forward`
-   - `speed_peak:backward`
-   - `speed_offpeak:backward`
-   - `aadt`
+6. Or if you've run this script before, you can save time by using the `-d` flag and pointing the script to the elevation data (DEM) .tif that was generated on-the-fly last time the script was run:
+   ```
+   python osm_gen_costs.py -d <your_dem_file.tif>
+   ```
+7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+   - `speed_peak:forward` -- speed during hours of peak traffic in the forward direction 
+   - `speed_peak:backward` -- speed during hours of peak traffic in the reverse direction 
+   - `speed_offpeak:forward` -- speed during offpeak traffic hours in the forward direction
+   - `speed_offpeak:backward` -- speed during offpeak traffic hours in the reverse direction
+   - `slope_1:forward` -- % distance with 2-4% slope in the forward direction
+   - `slope_2:forward` -- % distance with 4-6% slope in the forward direction
+   - `slope_3:forward` -- % distance with 6+% slope in the forward direction
+   - `slope_4:forward` -- % distance with 10+% slope in the forward direction
+   - `slope_1:backward` -- % distance with 2-4% slope in the reverse direction
+   - `slope_2:backward` -- % distance with 4-6% slope in the reverse direction
+   - `slope_3:backward` -- % distance with 6+% slope in the reverse direction
+   - `slope_4:backward` -- % distance with 10+% slope in the reverse direction
+   - `self_aadt` -- annual average daily traffic on the edge
+   - `cross_aadt:forward` -- annual average daily cross-traffic on the edge in the forward direction
+   - `cross_aadt:backward` -- annual average daily cross-traffic on the edge in the reverse direction
+   - `parallel_aadt:forward` -- annual average daily parallel-traffic on the edge in the forward direction
+   - `parallel_aadt:backward` -- annual average daily parallel-traffic on the edge in the reverse direction
+   - `control_type:forward` -- stop sign or traffic signal in the forward direction
+   - `control_type:backward` -- stop sign or traffic signal in the reverse direction
+   - `bike_infra:forward` -- bike paths, lanes or boulevards in the forward direction
+   - `bike_infra:backward` -- bike paths, lanes or boulevards in the reverse direction
+   - `unpaved_alley` -- edge is an unpaved alley
+   - `busy` -- edge is tertiary road type or above
+   - `xwalk:forward` -- crosswalk in the forward direction
+   - `xwalk:backward` -- crosswalk in the reverse direction
 
-7. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
+8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
    ```
-   python osm_generalized_costs.py -s shp
+   python osm_gen_costs.py -s shp
    ```
 
 <sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If you do want to use local data but your filenames are different from those specified at the top of the script, you can edit them manually there.
@@ -74,9 +82,9 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | distance                  | 1.0                           | distance                 |                                                                                            |
 | bike boulevard            | -0.108                        | bike_blvd_penalty        | OSM: cycleway="shared" OR LADOT: bikeway=("Route" OR "Shared Route")                       |
 | bike path                 | -0.16                         | bike_path_penalty        | OSM: highway="cycleway" OR (highway="path" & bicycle="dedicated") OR LADOT: bikeway="Path" |
-| prop link slope 2-4%      | 0.371                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
-| prop link slope 4-6%      | 1.23                          | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
-| prop link slope 6%+       | 3.239                         | slope_penalty            | upslope for forward direction, downslope for backward direction                            |
+| prop link slope 2-4%      | 0.371                         | slope_penalty            | upslope in forward direction, downslope in backward direction                            |
+| prop link slope 4-6%      | 1.23                          | slope_penalty            | upslope in forward direction, downslope in backward direction                            |
+| prop link slope 6%+       | 3.239                         | slope_penalty            | upslope in forward direction, downslope in backward direction                            |
 | no bike lane (10-20k)     | 0.368                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (20-30k)     | 1.4                           | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
 | no bike lane (30k+)       | 7.157                         | no_bike_penalty          | OSM: cycleway=(NULL OR "no") OR OSM: bicycle="no" AND LADOT: bikeway=NULL                  |
@@ -84,8 +92,8 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 | Fixed Distance Metric  | Addt'l Distance (m)<sup>*</sup> | Variable Name            | Notes                                                                  |
 |------------------------|---------------------------------|--------------------------|------------------------------------------------------------------------|
 | turns                  | 54                              | turn_penalty             | assume additive ped turn penalty and scale other penalties based on the ratio of the coefficient to the original bike turns coefficient |
-| stop signs             | 6                               | stop_penalty             | (LADOT: stop/yield)                                                    |
-| traffic signal         | 27                              | signal_penalty           | (LADOT: signalized intersection)                                       |
+| stop signs             | 6                               | stop_penalty             | LADOT datasource: stop_yield                                                    |
+| traffic signal         | 27                              | signal_penalty           | LADOT datasource: signalized_intersection                                       |
 | cross traffic (5-10k)  | 78                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (10-20k) | 81                              | cross_traffic_penalty_ls | left or straight only                                                  |
 | cross traffic (20k+)   | 424                             | cross_traffic_penalty_ls | left or straight only                                                  |
@@ -158,14 +166,14 @@ The **osm_generalized_costs.py** script is designed to generate OSM-based, gener
 |Way ID | [13356087](https://www.openstreetmap.org/way/13356087)|
 |From Node | 123018756 |
 |To Node | 368008589 |
-| 'gen_cost_ped:forward:link' |	54.416 |
-| 'gen_cost_ped:forward:left' |	54 |
-| 'gen_cost_ped:forward:straight' |	0 |
-| 'gen_cost_ped:forward:right' |	54 |
-| 'gen_cost_ped:backward:link' |	54.416 |
-| 'gen_cost_ped:backward:left' |	54 |
-| 'gen_cost_ped:backward:straight' |	73 |
-| 'gen_cost_ped:backward:right' |	54 |
+|gen_cost_ped:forward:link |	54.416 |
+|gen_cost_ped:forward:left |	54 |
+|gen_cost_ped:forward:straight |	0 |
+|gen_cost_ped:forward:right |	54 |
+|gen_cost_ped:backward:link |	54.416 |
+|gen_cost_ped:backward:left |	54 |
+|gen_cost_ped:backward:straight |	73 |
+|gen_cost_ped:backward:right |	54 |
 |unsig_art_xing_penalty_lr:forward | 0 |
 |unsig_art_xing_penalty_s:forward | 0 |
 |unsig_art_xing_penalty_lr:backward | 0 |
