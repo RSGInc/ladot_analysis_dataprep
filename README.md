@@ -210,8 +210,9 @@ Bike infrastructure is assigned by converting LADOT Bikeways lines to points, an
 ^ Above, LADOT Bikeways are shown in teal, with OSM ways shown in pink where they have been assigned bicycle infrastructure and blue where they have not.
 
 ## Slope Computation
-<img src="images/la_mean_slopes.png" width=70%>
-^ above: LA County road network colored by mean absolute slope along each OSM way.
+<p align="center">
+   <img src="images/la_mean_slopes.png" width=70%>
+</p>
 
 ### Examples
 The following images show the LA county OSM roads colored from green to red based on the percentage of each OSM way that has a slope >= 6%:
