@@ -273,7 +273,7 @@ class OpenDEMProfiler(object):
         """
         Generate elevation trajectories for each coordinate pair
 
-        TO DO: parallelize this bc it takes wayyy too long right now.
+        TO DO: parallelize this bc it takes way too long to run.
 
         Args
             gdf: A geopandas.GeoDataFrame of LineString geometries

@@ -105,6 +105,7 @@ dependencies:
   - openjpeg=2.3.1=hcdae239_3
   - openssl=1.1.1d=h0b31af3_0
   - osmnet=0.1.5=py_3
+  - osmnx=0.11.3=py3
   - packaging=20.0=py_0
   - palettable=3.3.0=py_0
   - pandana=0.4.4=py38h4f17bb1_0
@@ -196,5 +197,4 @@ dependencies:
     - pyshp==1.2.12
     - rtree==0.9.3
     - widgetsnbextension==3.5.1
-prefix: /Users/max/opt/anaconda3/envs/rsg
 

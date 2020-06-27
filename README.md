@@ -40,7 +40,11 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
    ```
    python osm_gen_costs.py -d <your_dem_file.tif>
    ```
-7. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+7. If you would rather store your output data ESRI shapefiles instead of .pbf, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data. 
+   ```
+   python osm_gen_costs.py -s shp
+   ```
+8. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
    - `speed_peak:forward` -- speed during hours of peak traffic in the forward direction 
    - `speed_peak:backward` -- speed during hours of peak traffic in the reverse direction 
    - `speed_offpeak:forward` -- speed during offpeak traffic hours in the forward direction
@@ -67,10 +71,7 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
    - `xwalk:forward` -- crosswalk in the forward direction
    - `xwalk:backward` -- crosswalk in the reverse direction
 
-8. If you would rather store your output as ESRI shapefiles, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data, with generalized cost attributes stored in the edges. 
-   ```
-   python osm_gen_costs.py -s shp
-   ```
+
 
 <sup>&dagger;</sup>Note: Generalized cost generation can be executed without the use of local data by running the script with the `-i` (no infrustructure data) or `-v` (no volume/speed data) flags. If you do want to use local data but your filenames are different from those specified at the top of the script, you can edit them manually there.
 
@@ -209,20 +210,22 @@ Bike infrastructure is assigned by converting LADOT Bikeways lines to points, an
 <img src="images/bike_infra_matching.png" width=70%>
 ^ Above, LADOT Bikeways are shown in teal, with OSM ways shown in pink where they have been assigned bicycle infrastructure and blue where they have not.
 
-## Slope Computations
-<img src="images/la_mean_slopes.png" width=70%>
-^ above: LA County road network colored by mean absolute slope along each OSM way.
+## Slope Computation
+<p align="center">
+   <img src="images/la_mean_slopes.png" width=70%>
+</p>
 
 ### Examples
 The following images show the LA county OSM roads colored from green to red based on the percentage of each OSM way that has a slope >= 6%:
 
-1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:<img src="images/la_slopes.png"  width=70%>
+1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:
+   <img src="images/la_slopes.png"  width=70%>
 
-2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach: <img src="images/manhattan_beach.png"  width=70%>
+2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach:
+   <img src="images/manhattan_beach.png"  width=50%>
 
 3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):
-   
-   <img src="images/baxter_street.png"  width=70%>
+   <img src="images/baxter_street.png"  width=50%>
  
 # Land Use Data
 The following datasets are used by Conveyal to define "opportunities" for computing accessibilities and are not required for computing generalized costs on the travel network:
