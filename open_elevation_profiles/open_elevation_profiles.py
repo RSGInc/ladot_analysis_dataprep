@@ -273,6 +273,8 @@ class OpenDEMProfiler(object):
         """
         Generate elevation trajectories for each coordinate pair
 
+        TO DO: parallelize this bc right now it takes way too long to run.
+
         Args
             gdf: A geopandas.GeoDataFrame of LineString geometries
             dem: A rasterio.DatasetReader object, probably a
