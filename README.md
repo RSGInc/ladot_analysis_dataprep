@@ -217,15 +217,12 @@ Bike infrastructure is assigned by converting LADOT Bikeways lines to points, an
 The following images show the LA county OSM roads colored from green to red based on the percentage of each OSM way that has a slope >= 6%:
 
 1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:
-
    <img src="images/la_slopes.png"  width=70%>
 
 2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach:
-
    <img src="images/manhattan_beach.png"  width=70%>
 
 3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):
-   
    <img src="images/baxter_street.png"  width=70%>
  
 # Land Use Data
