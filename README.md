@@ -192,14 +192,14 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
 
 ### Stop Signs
 Currently stop sign designations are assigned at the intersection level, meaning if there is any stop sign at an intersection, all edges terminating at that intersection are assigned a stop sign penalty:
-<img src="images/stop_sign_matching.png" width=70%>
+<img src="images/stop_sign_matching.png" width=50%>
 
 ## Pedestrian Infrastructure Assignment
 
 ### Crosswalks
 Crosswalk assignment currently works like stop sign assignment described above. If there is a crosswalk at an intersection, all edges terminating at that intersection are assigned a crosswalk penalty:
 
-<img src="images/xwalk_matching.png">
+<img src="images/xwalk_matching.png" width=70%>
 If OSM has footway edges representing the crosswalks, then those footways will be associated with the crosswalk, as seen in the right-most intersection above. Otherwise, the crosswalks will be associated with the roadway edges as seen in the two intersections to the left.
 
 ## Bicycle Infrastructure Assignment
@@ -207,7 +207,7 @@ If OSM has footway edges representing the crosswalks, then those footways will b
 ### Bike Lanes
 Bike infrastructure is assigned by converting LADOT Bikeways lines to points, and then snapping those points to the OSM network:
 
-<img src="images/bike_infra_matching.png" width=70%>
+<img src="images/bike_infra_matching.png" width=50%>
 ^ Above, LADOT Bikeways are shown in teal, with OSM ways shown in pink where they have been assigned bicycle infrastructure and blue where they have not.
 
 ## Slope Computation
