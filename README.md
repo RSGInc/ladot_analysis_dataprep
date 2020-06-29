@@ -192,6 +192,7 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
 
 ### Stop Signs
 Currently stop sign designations are assigned at the intersection level, meaning if there is any stop sign at an intersection, all edges terminating at that intersection are assigned a stop sign penalty:
+
 <img src="images/stop_sign_matching.png" width=50%>
 
 ## Pedestrian Infrastructure Assignment
