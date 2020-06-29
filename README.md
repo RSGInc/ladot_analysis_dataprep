@@ -192,14 +192,15 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
 
 ### Stop Signs
 Currently stop sign designations are assigned at the intersection level, meaning if there is any stop sign at an intersection, all edges terminating at that intersection are assigned a stop sign penalty:
-<img src="images/stop_sign_matching.png" width=70%>
+
+<img src="images/stop_sign_matching.png" width=50%>
 
 ## Pedestrian Infrastructure Assignment
 
 ### Crosswalks
 Crosswalk assignment currently works like stop sign assignment described above. If there is a crosswalk at an intersection, all edges terminating at that intersection are assigned a crosswalk penalty:
 
-<img src="images/xwalk_matching.png">
+<img src="images/xwalk_matching.png" width=70%>
 If OSM has footway edges representing the crosswalks, then those footways will be associated with the crosswalk, as seen in the right-most intersection above. Otherwise, the crosswalks will be associated with the roadway edges as seen in the two intersections to the left.
 
 ## Bicycle Infrastructure Assignment
@@ -207,24 +208,27 @@ If OSM has footway edges representing the crosswalks, then those footways will b
 ### Bike Lanes
 Bike infrastructure is assigned by converting LADOT Bikeways lines to points, and then snapping those points to the OSM network:
 
-<img src="images/bike_infra_matching.png" width=70%>
+<img src="images/bike_infra_matching.png" width=50%>
 ^ Above, LADOT Bikeways are shown in teal, with OSM ways shown in pink where they have been assigned bicycle infrastructure and blue where they have not.
 
 ## Slope Computation
 <p align="center">
-   <img src="images/la_mean_slopes.png" width=70%>
+   <img src="images/la_mean_slopes.png" width=50%>
 </p>
 
 ### Examples
 The following images show the LA county OSM roads colored from green to red based on the percentage of each OSM way that has a slope >= 6%:
 
 1. This county-wide map shows roads with the highest percentage of slopes >6% clustered around the the foothills of the Santa Monica and San Gabriel mountain ranges, as expected:
-   <img src="images/la_slopes.png"  width=70%>
+
+   <img src="images/la_slopes.png"  width=50%>
 
 2. A more detailed view shows the severity of the slopes of streets leading down to sea level near Manhattan Beach:
-   <img src="images/manhattan_beach.png"  width=50%>
+
+   <img src="images/manhattan_beach.png"  width=40%>
 
 3. A third image highlights the slopes of roads to the NW of Dodger Stadium, including the infamously inclined [Baxter Street](https://www.laweekly.com/this-super-steep-echo-park-street-is-hell-on-earth-for-cars/):
+
    <img src="images/baxter_street.png"  width=50%>
  
 # Land Use Data
