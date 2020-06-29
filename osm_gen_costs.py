@@ -1054,23 +1054,23 @@ if __name__ == '__main__':
                 'parallel_traffic:forward', 'parallel_traffic:backward']:
             edges[col] = None
 
-    # # 4. PROCESS INFRASTRUCTURE DATA
-    # # assign traffic signals to intersections
-    # logger.info('Assigning traffic control to intersections.')
-    # edges = assign_traffic_control(
-    #     G, nodes, edges, local_infra_data=local_infra_data)
-    # logger.info('Done.')
+    # 4. PROCESS INFRASTRUCTURE DATA
+    # assign traffic signals to intersections
+    logger.info('Assigning traffic control to intersections.')
+    edges = assign_traffic_control(
+        G, nodes, edges, local_infra_data=local_infra_data)
+    logger.info('Done.')
 
-    # # assign bike infrastructure designations
-    # logger.info('Assigning bicycle infrastructure designations.')
-    # edges = assign_bike_infra(edges, local_infra_data=local_infra_data)
-    # logger.info('Done.')
+    # assign bike infrastructure designations
+    logger.info('Assigning bicycle infrastructure designations.')
+    edges = assign_bike_infra(edges, local_infra_data=local_infra_data)
+    logger.info('Done.')
 
-    # # assign ped infrastructure designations
-    # logger.info('Assigning pedestrian infrastructure designations.')
-    # edges = assign_ped_infra(
-    #     G, nodes, edges, local_infra_data=local_infra_data)
-    # logger.info('Done.')
+    # assign ped infrastructure designations
+    logger.info('Assigning pedestrian infrastructure designations.')
+    edges = assign_ped_infra(
+        G, nodes, edges, local_infra_data=local_infra_data)
+    logger.info('Done.')
 
     # 5. GET ELEVATION PROFILES ALONG EACH EDGE
     dp = dem_profiles.DEMProfiler(
@@ -1127,7 +1127,7 @@ if __name__ == '__main__':
 
     # 8. STORE RESULTS TO DISK
 
-    # edges = generate_xtra_conveyal_tags(edges)
+    edges = generate_xtra_conveyal_tags(edges)
 
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs('EPSG:4326')
