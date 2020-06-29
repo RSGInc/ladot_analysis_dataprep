@@ -1,6 +1,4 @@
 import osmnx as ox
-import rasterio
-from rasterio.errors import RasterioIOError
 from tqdm import tqdm
 import numpy as np
 import os
@@ -20,6 +18,7 @@ logger = logging.getLogger('osm_gen_costs')
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 logging.getLogger('numexpr.utils').setLevel(logging.WARNING)
+logging.getLogger('fiona._env').setLevel(logging.CRITICAL)
 
 # default vars
 place = 'Los Angeles County, California, USA'
@@ -31,6 +30,7 @@ gen_costs_on = True
 save_as = 'pbf'
 slope_stat_breaks = [[2, 4, 6], [10]]
 local_crs = 'EPSG:2770'
+integer_bbox = None
 
 # default files, filepaths, and URLs
 data_dir = './data/'
@@ -1080,17 +1080,8 @@ if __name__ == '__main__':
     if dem_mode == 'otf':
         logger.info('Downloading DEMs from USGS...this might take a while')
         integer_bbox = get_integer_bbox(nodes)
-        dp.download_usgs_dem(integer_bbox, dem_fname)
 
-    logger.info('Loading the DEM from disk...')
-    dem_path = os.path.join(data_dir, dem_fname)
-    try:
-        dem = rasterio.open(dem_path)
-    except RasterioIOError:
-        raise RasterioIOError(
-            "Couldn't find file {0}. Make sure it is in "
-            "the data directory ({1}).".format(
-                dem_path, os.path.abspath(data_dir)))
+    dem = dp.get_dem(dem_mode, dem_fname, integer_bbox)
 
     # convert linestring geoms to list of coord pair tuples
     edges['coord_pairs'] = slopes.get_coord_pairs_from_geom(edges)
@@ -1101,12 +1092,12 @@ if __name__ == '__main__':
     logger.info('Done.')
 
     # 6. COMPUTE SLOPES AND SLOPE STATISTICS
-    logger.info('Computing LineString distances and slopes.')
+    logger.info('Computing slopes.')
     # point-to-point distances within each edge LineString geometry
-    edges['dists'] = dp.get_point_to_point_dists(edges)
+    edges['dists'] = slopes.get_point_to_point_dists(edges)
 
     # compute slopes along each of those distances
-    edges['slopes'] = dp.get_slopes(edges)
+    edges['slopes'] = slopes.get_slopes(edges)
     edges['mean_abs_slope'] = edges['slopes'].apply(
         lambda x: np.mean(np.abs(x)))
     logger.info('Done.')
@@ -1114,7 +1105,9 @@ if __name__ == '__main__':
     # generate up- and down-slope stats as well as undirected
     logger.info('Computing slope statistics.')
     og_edge_cols = edges.columns
-    edges = dp.get_slope_stats(edges, slope_stat_breaks)
+    edges = slopes.get_slope_stats(
+        edges, directions='all', agg_stats='all', binned_stats='all',
+        slope_pct_bins=slope_stat_breaks)
     slope_stat_cols = [col for col in edges.columns if col not in og_edge_cols]
 
     # delete big cols we don't need anymore
@@ -1144,7 +1137,7 @@ if __name__ == '__main__':
         # turn the edges back to a graph to save as shapefile
         logger.info('Saving graph as shapefile. This might take a while...')
         nodes.gdf_name = 'nodes'
-        ox.save_gdf_shapefile(nodes, 'nodes', out_path)
+        # ox.save_gdf_shapefile(nodes, 'nodes', out_path)
         edges.gdf_name = 'edges'
         ox.save_gdf_shapefile(edges, 'edges', out_path)
 
