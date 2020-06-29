@@ -160,7 +160,7 @@ class DEMProfiler(object):
         abs_max_y = max(min_y, max_y)
         tot_x = abs_max_x - abs_min_x + 1
         tot_y = abs_max_y - abs_min_y + 1
-        tot_files = max(tot_x, tot_y)
+        tot_files = tot_x * tot_y
         it = 0
         for x in range(abs_min_x, abs_max_x + 1):
             x = str(x).zfill(3)
@@ -170,7 +170,7 @@ class DEMProfiler(object):
                 url = self._format_dem_url(x, y)
                 _ = self._download_save_geotiff(url, fname)
                 it += 1
-                self.logger.info(
+                self.logger.debug(
                     'Downloaded {0} of {1} DEMs and saved as GeoTIFF.'.format(
                         it, tot_files))
 
