@@ -1,3 +1,14 @@
+"""Functions for generating slopes and statistics from elevation profiles.
+
+This module contains a collection of methods for generating slopes and slope-
+based statistics along linear feature geometries. These features must already
+contain elevation profiles ("z-trajectories").
+
+Every method here operates on a geopandas.GeoDataFrame object, and returns
+either an updated version of that same object or a new pandas.Series to be
+appended to that object.
+"""
+
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import cdist
@@ -6,32 +17,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def _get_point_to_point_dists(gdf, colname='coord_pairs'):
-    """
-    Fetches pairwise euclidean distances from a dataframe
-    of network edges containing lists of (x,y) coordinate pairs,
-    each of which corresponds to a point in the LineString
-    geometry of an edge.
-
-    Arguments:
-        gdf: A geopandas.GeoDataFrame of LineString geometries
-        colname: The name of the column in gdf containing the
-            coordinate pair tuples
-
-    Returns:
-        A pandas.Series object with lists of distances as its
-            values.
-    """
-
-    tmp_df = gdf.copy()
-    if colname not in tmp_df.columns:
-        tmp_df[colname] = get_coord_pairs_from_geom(tmp_df)
-    tmp_df['dists'] = tmp_df['coord_pairs'].apply(
-        lambda x: np.diag(cdist(x[:-1], x[1:])))
-
-    return tmp_df['dists']
 
 
 def _get_slope_mask(gdf, lower, upper=None, direction="up"):
@@ -84,6 +69,32 @@ def _get_slope_mask(gdf, lower, upper=None, direction="up"):
     return mask
 
 
+def get_point_to_point_dists(gdf, colname='coord_pairs'):
+    """
+    Fetches pairwise euclidean distances from a dataframe
+    of network edges containing lists of (x,y) coordinate pairs,
+    each of which corresponds to a point in the LineString
+    geometry of an edge.
+
+    Args:
+        gdf: A geopandas.GeoDataFrame of LineString geometries
+        colname: The name of the column in gdf containing the
+            coordinate pair tuples
+
+    Returns:
+        A pandas.Series object with lists of distances as its
+            values.
+    """
+
+    tmp_df = gdf.copy()
+    if colname not in tmp_df.columns:
+        tmp_df[colname] = get_coord_pairs_from_geom(tmp_df)
+    tmp_df['dists'] = tmp_df['coord_pairs'].apply(
+        lambda x: np.diag(cdist(x[:-1], x[1:])))
+
+    return tmp_df['dists']
+
+
 def get_coord_pairs_from_geom(gdf):
     """
     Convert geometry column to list of coordinate tuples
@@ -105,7 +116,7 @@ def get_slopes(gdf, z_col='z_trajectories', dist_col='dists'):
     segment distances, calculates the slope along each segment
     of a LineString geometry for every edge.
 
-    Arguments:
+    Args:
         gdf: A geopandas.GeoDataFrame of LineString geometries
         z_col: The name of the column in gdf containing elevation
             trajectories for each feature
@@ -118,7 +129,7 @@ def get_slopes(gdf, z_col='z_trajectories', dist_col='dists'):
     """
     tmp_df = gdf.copy()
     if dist_col not in tmp_df.columns:
-        tmp_df[dist_col] = _get_point_to_point_dists(tmp_df)
+        tmp_df[dist_col] = get_point_to_point_dists(tmp_df)
     tmp_df['z_diffs'] = tmp_df[z_col].apply(
         lambda x: np.diff(x))
     tmp_df['slopes'] = tmp_df['z_diffs'] / tmp_df[dist_col]
@@ -203,7 +214,7 @@ def get_slope_stats(
 
             elif direction == "undirected":
                 gdf[agg_stat_col] = gdf['slopes'].apply(
-                    lambda slopes: pd.Series(slopes).agg(agg_stat))
+                    lambda slopes: pd.Series(np.abs(slopes)).agg(agg_stat))
 
         if binned_stats:
 

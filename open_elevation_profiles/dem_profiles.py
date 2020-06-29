@@ -1,9 +1,24 @@
 import requests
 import os
+"""Class for generating elevation profiles from DEMs
+
+Leave one blank line.  The rest of this docstring should contain an
+overall description of the module or program.  Optionally, it may also
+contain a brief description of exported classes and functions and/or usage
+examples.
+
+  Typical usage example:
+
+  dp = DEMProfiler()
+  dem = dp.
+  edges_gdf['elevation_profiles'] = dp.get_z_trajectories(edges_gdf, dem)
+"""
+
 import zipfile
 from osgeo import gdal
 import glob
 import rasterio
+from rasterio.errors import RasterioIOError
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.merge import merge
 from tqdm import tqdm
@@ -23,9 +38,9 @@ dem_formattable_url = (
 class DEMProfiler(object):
     """Generates high resolution elevation profiles on-the-fly
 
-    This collection of methods is designed to generate high-resolution
-    elevation profiles for linear feature geometries (e.g. LineStrings)
-    using open source USGS Digital Elevation Models (DEMs).
+    This class is designed to generate high-resolution elevation profiles for
+    linear feature geometries (e.g. LineStrings) using open source USGS Digital
+    Elevation Models (DEMs).
 
     The idea here is to sample values from a DEM using the point coordinates
     embedded as vertices in the linear features themselves. This typically
@@ -226,12 +241,9 @@ class DEMProfiler(object):
         """
         Downloads DEM files from USGS API
 
-        Arguments:
-            integer_bbox (tuple): A tuple of min_lon, min_lat,
+        Args:
+            integer_bbox: A tuple of min_lon, min_lat,
                 max_lon, max_lat integer coordinates
-
-        Returns:
-            None
         """
 
         num_files = self._get_all_dems(integer_bbox)
@@ -247,6 +259,35 @@ class DEMProfiler(object):
         _ = self._reproject_geotiff(dem_fname)
 
         return
+
+    def get_dem(self, dem_mode, dem_fname='usgs_dem.tif', integer_bbox=None):
+        """
+        Loads DEM data from USGS, downloading it first if needed.
+
+        Args:
+            dem_mode: "otf" or "local". "local" will try to load DEM data from
+                disk using the filename specified in `dem_fname`. "otf" will
+                first download the DEM from the USGS API.
+            dem_fname: name of the DEM file to load (or save).
+            integer_bbox: A tuple of min_lon, min_lat, max_lon, max_lat integer
+                coordinates. Required if downloading DEM on-the-fly.
+        """
+        if dem_mode == 'otf':
+            if not integer_bbox:
+                raise ValueError("Cannot download DEM without a bounding box!")
+            self.logger.info(
+                'Downloading DEMs from USGS...this might take a while')
+            self.download_usgs_dem(integer_bbox, dem_fname)
+
+        self.logger.info('Loading the DEM from disk...')
+        dem_path = os.path.join(self.data_dir, dem_fname)
+        try:
+            dem = rasterio.open(dem_path)
+            return dem
+        except RasterioIOError:
+            raise RasterioIOError(
+                "Couldn't find file {0}. Make sure it is in "
+                "the data directory ({1}).".format(dem_path, self.data_dir))
 
     def get_z_trajectories(self, gdf, dem):
         """
