@@ -9,9 +9,17 @@ import glob
 import geopandas as gpd
 from scipy.spatial import cKDTree
 import pandas as pd
+import logging
+import sys
 
-from open_elevation_profiles import open_elevation_profiles
+from open_elevation_profiles import dem_profiles, slopes
 
+
+# configure logging
+logger = logging.getLogger('osm_gen_costs')
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+logging.getLogger('numexpr.utils').setLevel(logging.WARNING)
 
 # default vars
 place = 'Los Angeles County, California, USA'
@@ -34,7 +42,7 @@ traffic_signals_fname = (
 bikeways_fname = 'Bikeways_As_of_7302019/Bikeways_7302019.shp'
 streetlight_data_dir = 'Big Data/OneDrive_1_1-27-2020/'
 streetlight_data_forward = 'StreetLight_OSM_PrimaryRoads_AtoB/'
-streetlight_data_backward = 'StreetLight_OSM_PrimaryRoads_AtoB/'
+streetlight_data_backward = 'StreetLight_OSM_PrimaryRoads_BtoA/'
 streetlight_data_glob = '*/*sa_all.csv'
 
 # default osmnx settings
@@ -914,7 +922,7 @@ if __name__ == '__main__':
         help='ignore all local data (infrastructure, traffic volumes, etc.)')
     parser.add_argument(
         '-g', '--gen_costs', action='store', dest='gen_costs',
-        chocies=['on', 'off'], help='toggle generalized cost computation')
+        choices=['on', 'off'], help='toggle generalized cost computation')
 
     options = parser.parse_args()
 
@@ -952,16 +960,13 @@ if __name__ == '__main__':
         local_volume_data = False
 
     if options.gen_costs:
-        try:
-            gen_costs_on = {'on': True, 'off': False}[options.gen_costs]
-        except KeyError:
-            raise KeyError(
-                "gen_cost flag misspecified. See --help for more details")
+        gen_cost_arg_dict = {'on': True, 'off': False}
+        gen_costs_on = gen_cost_arg_dict[options.gen_costs]
 
     assert ox.settings.all_oneway
 
     # 1. LOAD OSM DATA
-    print('Loading OSM data...')
+    logger.info('Loading OSM data...')
 
     # load from disk
     if osm_mode == 'local':
@@ -982,10 +987,10 @@ if __name__ == '__main__':
         raise ValueError(
             'Must specify a valid OSM mode. See --help '
             'for more details.')
-    print('Done.')
+    logger.info('Done.')
 
     # 2. GRAPH PRE-PROCESSING
-    print('Processing the graph...')
+    logger.info('Processing the graph...')
 
     # we will need edge bearings to process AADT data, but skip
     # this step otherwise because it takes a long time to run
@@ -999,14 +1004,12 @@ if __name__ == '__main__':
     edges.crs = 'EPSG:4326'
     edges = edges.to_crs(local_crs)
 
-    # process the geometries to perform calculations
-    edges['coord_pairs'] = edges['geometry'].apply(lambda x: list(x.coords))
-    print('Done.')
+    logger.info('Done.')
 
     # 3. (OPTIONAL) LOAD SPEED AND VOLUME DATA
     if local_volume_data:
 
-        print('Loading speed and traffic volume data')
+        logger.info('Loading speed and traffic volume data.')
         speeds, aadt = get_speeds_and_volumes(data_dir, streetlight_data_dir)
         edges = pd.merge(
             edges, aadt, left_on='osmid', right_on='Zone ID', how='left')
@@ -1053,50 +1056,52 @@ if __name__ == '__main__':
 
     # # 4. PROCESS INFRASTRUCTURE DATA
     # # assign traffic signals to intersections
-    # print('Assigning traffic control to intersections.')
+    # logger.info('Assigning traffic control to intersections.')
     # edges = assign_traffic_control(
     #     G, nodes, edges, local_infra_data=local_infra_data)
-    # print('Done.')
+    # logger.info('Done.')
 
     # # assign bike infrastructure designations
-    # print('Assigning bicycle infrastructure designations.')
+    # logger.info('Assigning bicycle infrastructure designations.')
     # edges = assign_bike_infra(edges, local_infra_data=local_infra_data)
-    # print('Done.')
+    # logger.info('Done.')
 
     # # assign ped infrastructure designations
-    # print('Assigning pedestrian infrastructure designations.')
+    # logger.info('Assigning pedestrian infrastructure designations.')
     # edges = assign_ped_infra(
     #     G, nodes, edges, local_infra_data=local_infra_data)
-    # print('Done.')
+    # logger.info('Done.')
 
-    # 5. COMPUTE SLOPE STATISTICS
-    dp = open_elevation_profiles.DEMProfiler(
+    # 5. GET ELEVATION PROFILES ALONG EACH EDGE
+    dp = dem_profiles.DEMProfiler(
         data_dir=data_dir, local_crs=local_crs)
 
     # get dem data
     if dem_mode == 'otf':
-        print('Downloading DEMs from USGS...this might take a while')
+        logger.info('Downloading DEMs from USGS...this might take a while')
         integer_bbox = get_integer_bbox(nodes)
         dp.download_usgs_dem(integer_bbox, dem_fname)
 
-    print('Loading the DEM from disk...')
+    logger.info('Loading the DEM from disk...')
     dem_path = os.path.join(data_dir, dem_fname)
     try:
         dem = rasterio.open(dem_path)
     except RasterioIOError:
-        print(
+        raise RasterioIOError(
             "Couldn't find file {0}. Make sure it is in "
             "the data directory ({1}).".format(
-                osm_path, os.path.abspath(data_dir)))
+                dem_path, os.path.abspath(data_dir)))
+
+    # convert linestring geoms to list of coord pair tuples
+    edges['coord_pairs'] = slopes.get_coord_pairs_from_geom(edges)
 
     # extract elevation trajectories from DEM. This can take a while.
-    print(
-        'Extracting elevation trajectories for the network edges. '
-        'This might take a while...')
+    logger.info('Generating elevation profiles.')
     edges['z_trajectories'] = dp.get_z_trajectories(edges, dem)
-    print('Done.')
+    logger.info('Done.')
 
-    print('Computing LineString distances and slopes')
+    # 6. COMPUTE SLOPES AND SLOPE STATISTICS
+    logger.info('Computing LineString distances and slopes.')
     # point-to-point distances within each edge LineString geometry
     edges['dists'] = dp.get_point_to_point_dists(edges)
 
@@ -1104,87 +1109,47 @@ if __name__ == '__main__':
     edges['slopes'] = dp.get_slopes(edges)
     edges['mean_abs_slope'] = edges['slopes'].apply(
         lambda x: np.mean(np.abs(x)))
-    print('Done.')
+    logger.info('Done.')
 
     # generate up- and down-slope stats as well as undirected
-    print('Generating slope statistics going...')
-    for direction in ["up", "down", "undirected"]:
-        print("..." + direction)
+    logger.info('Computing slope statistics.')
+    og_edge_cols = edges.columns
+    edges = dp.get_slope_stats(edges, slope_stat_breaks)
+    slope_stat_cols = [col for col in edges.columns if col not in og_edge_cols]
 
-        # iterate through pairs of slope boundaries defined
-        # in line 16
-        for breaks in slope_stat_breaks:
-            for i, lower_bound in enumerate(breaks):
-                bounds = breaks[i:i + 2]
-
-                if len(bounds) == 2:
-                    upper_bound = bounds[1]
-                    upper_bound_str = str(upper_bound)
-
-                else:
-                    upper_bound = None
-                    upper_bound_str = 'plus'
-
-                for stat in ["tot", "pct"]:
-
-                    # define the new column name to store the slope
-                    # stat in the edges table
-                    new_colname = '{0}_{1}_dist_{2}_{3}'.format(
-                        direction, stat, lower_bound, upper_bound_str)
-                    custom_tags.append(new_colname)
-
-                    mask = dp.get_slope_mask(
-                        edges, lower_bound, upper_bound, direction)
-
-                    # multiplying the distances by the boolean mask
-                    # will set all distances that correspond to slopes
-                    # outside of the mask boundaries used to 0
-                    masked_dists = edges['dists'] * mask
-
-                    # sum these masked dists to get total dist within
-                    # the slope bounds
-                    if stat == "tot":
-                        edges[new_colname] = masked_dists.apply(sum)
-
-                    # or divide by the total edge length to get a percentage
-                    elif stat == "pct":
-                        edges[new_colname] = \
-                            masked_dists.apply(sum) / edges['length']
-
+    # delete big cols we don't need anymore
     edges = edges[[col for col in edges.columns if col not in [
         'coord_pairs', 'z_trajectories', 'dists', 'slopes']]]
-    print('Done.')
+    logger.info('Done.')
 
-    # 6. (OPTIONAL) COMPUTE GENERALIZED COSTS ALONG THE EDGES
+    # 7. (OPTIONAL) COMPUTE GENERALIZED COSTS ALONG THE EDGES
     if gen_costs_on:
         # get generalized costs for bike routing
-        print('Generating generalized costs for bike routing.')
+        logger.info('Generating generalized costs for bike routing.')
         edges = append_gen_cost_bike(edges)
 
         # get generalized costs for ped routing
-        print('Generating generalized costs for pedestrian routing.')
+        logger.info('Generating generalized costs for pedestrian routing.')
         edges = append_gen_cost_ped(edges)
 
-    # 7. STORE RESULTS TO DISK
+    # 8. STORE RESULTS TO DISK
 
-    edges = generate_xtra_conveyal_tags(edges)
+    # edges = generate_xtra_conveyal_tags(edges)
 
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs('EPSG:4326')
 
     if save_as == 'shp':
+        out_path = os.path.join(data_dir, out_fname)
         # turn the edges back to a graph to save as shapefile
-        print('Saving graph as shapefile. This might take a while...')
+        logger.info('Saving graph as shapefile. This might take a while...')
         nodes.gdf_name = 'nodes'
-        ox.save_gdf_shapefile(nodes, 'nodes', data_dir + out_fname)
+        ox.save_gdf_shapefile(nodes, 'nodes', out_path)
         edges.gdf_name = 'edges'
-        ox.save_gdf_shapefile(
-            edges[[col for col in ox.settings.osm_xml_way_tags] + [
-                'osmid', 'u', 'v', 'geometry']],
-            'edges', data_dir + out_fname)
+        ox.save_gdf_shapefile(edges, 'edges', out_path)
 
     elif save_as in ['osm', 'pbf']:
-        print('Saving graph as OSM XML. This might take a while...')
+        logger.info('Saving graph as OSM XML. This might take a while...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
             node_tags=ox.settings.osm_xml_node_tags,
@@ -1194,14 +1159,15 @@ if __name__ == '__main__':
             merge_edges=False)
 
         if save_as == 'pbf':
-            print('Converting OSM XML to .pbf')
+            logger.info('Converting OSM XML to .pbf')
             os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
                 os.path.join(data_dir, out_fname)))
-            print('File now available at {0}'.format(
+            logger.info('File now available at {0}'.format(
                 os.path.join(data_dir, out_fname + '.osm.pbf')))
     else:
         raise ValueError(
             "{0} is not a valid output file type. See --help for more "
             "details.".format(save_as))
 
-    odp.clean_up()
+    # remove tmp dir
+    dp.clean_up()

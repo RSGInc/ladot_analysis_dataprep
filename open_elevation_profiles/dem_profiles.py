@@ -1,8 +1,5 @@
-import numpy as np
-from scipy.spatial.distance import cdist
 import requests
 import os
-import operator
 import zipfile
 from osgeo import gdal
 import glob
@@ -11,47 +8,51 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.merge import merge
 from tqdm import tqdm
 import shutil
+import logging
+
+from . import slopes
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 dem_formattable_url = (
     'https://prd-tnm.s3.amazonaws.com/StagedProducts/'
     'Elevation/1/TIFF/n{0}w{1}/USGS_1_n{0}w{1}.tif')
 
 
-class OpenDEMProfiler(object):
-    """Generates high resolution elevation profiles on the fly
+class DEMProfiler(object):
+    """Generates high resolution elevation profiles on-the-fly
 
-    This collection of methods is designed to generate elevation profiles
-    and slope statistics for linear feature geometries (e.g. LineStrings)
-    using open source USGS DEMs
+    This collection of methods is designed to generate high-resolution
+    elevation profiles for linear feature geometries (e.g. LineStrings)
+    using open source USGS Digital Elevation Models (DEMs).
+
+    The idea here is to sample values from a DEM using the point coordinates
+    embedded as vertices in the linear features themselves. This typically
+    results in much higher resolution elevation profiles than could otherwise
+    be obtained by using only the start and end coordinates of a LineString.
+
+    Additionally, because these point coordinates already exist, this approach
+    is much faster than those that rely on resampling or interpolating points
+    along a line.
 
     Attributes:
-        dem_formattable_url (str): A generic formattable string defining the
-            URL path to the DEM data on the USGS server
+        dem_formattable_url (str): A generic formattable string defining
+        the URL path to the DEM data on the USGS server
         data_dir (str): The path to the local data directory
         local_crs (str): Defines the local coordinate reference system to
             use. Should be a crs where units are meters.
+        logger (object): configured logging object
     """
 
     def __init__(
-            self,
-            dem_formattable_url=dem_formattable_url,
-            data_dir='./data/', local_crs='EPSG:2770'):
+            self, dem_formattable_url=dem_formattable_url,
+            data_dir='./data/', local_crs='EPSG:2770', logger=logger):
 
         self.dem_formattable_url = dem_formattable_url
         self.data_dir = data_dir
         self.local_crs = local_crs
-
-    def _get_coord_pairs_from_geom(self, gdf):
-        """
-        Convert geometry column to list of coordinate tuples
-        Args
-            gdf: A geopandas.GeoDataFrame of LineString geometries
-
-        Returns:
-            A pandas.Series containing array-like coordinate tuples
-        """
-        gdf['coord_pairs'] = gdf['geometry'].apply(lambda x: list(x.coords))
-        return gdf['coord_pairs']
+        self.logger = logger
 
     def _format_dem_url(self, x, y):
         """
@@ -154,7 +155,7 @@ class OpenDEMProfiler(object):
                 url = self._format_dem_url(x, y)
                 _ = self._download_save_geotiff(url, fname)
                 it += 1
-                print(
+                self.logger.info(
                     'Downloaded {0} of {1} DEMs and saved as GeoTIFF.'.format(
                         it, tot_files))
 
@@ -247,28 +248,6 @@ class OpenDEMProfiler(object):
 
         return
 
-    def get_point_to_point_dists(self, gdf, colname='coord_pairs'):
-        """
-        Fetches pairwise euclidean distances from a dataframe
-        of network edges containing lists of (x,y) coordinate pairs,
-        each of which corresponds to a point in the LineString
-        geometry of an edge.
-
-        Arguments:
-            gdf: A geopandas.GeoDataFrame of LineString geometries
-            colname: The name of the column in gdf containing the
-                coordinate pair tuples
-
-        Returns:
-            A pandas.Series object with lists of distances as its
-                values.
-        """
-        tmp_df = gdf.copy()
-        tmp_df['dists'] = tmp_df['coord_pairs'].apply(
-            lambda x: np.diag(cdist(x[:-1], x[1:])))
-
-        return tmp_df['dists']
-
     def get_z_trajectories(self, gdf, dem):
         """
         Generate elevation trajectories for each coordinate pair
@@ -283,87 +262,19 @@ class OpenDEMProfiler(object):
         Returns:
             A pandas.Series containing array-like elevation profiles
         """
+        self.logger.info(
+            'Computing elevation profiles for {0} edges. This '
+            'might take a while...'.format(len(gdf)))
+        tmp_df = gdf.copy()
+        if 'coord_pairs' not in tmp_df.columns:
+            tmp_df['coord_pairs'] = slopes.get_coord_pairs_from_geom(tmp_df)
         z_trajectories = []
         for i, edge in tqdm(gdf.iterrows(), total=len(gdf)):
             z_trajectories.append(
                 [x[0] for x in dem.sample(edge['coord_pairs'])])
+        gdf['z_trajectories'] = z_trajectories
 
         return gdf['z_trajectories']
-
-    def get_slopes(self, gdf, z_col='z_trajectories', dist_col='dists'):
-        """
-        Computes slopes along edge segments.
-
-        Using vertical (z-axis) trajectories and lists of edge
-        segment distances, calculates the slope along each segment
-        of a LineString geometry for every edge.
-
-        Arguments:
-            gdf: A geopandas.GeoDataFrame of LineString geometries
-            z_col: The name of the column in gdf containing elevation
-                trajectories for each feature
-            dist_col: The name of the column in gdf containing point-to-
-                point distance tuples for each feature
-
-
-        Returns:
-            A pandas.Series object with lists of slopes as its values.
-        """
-        tmp_df = gdf.copy()
-        tmp_df['z_diffs'] = tmp_df[z_col].apply(
-            lambda x: np.diff(x))
-        tmp_df['slopes'] = tmp_df['z_diffs'] / tmp_df[dist_col]
-
-        return tmp_df['slopes']
-
-    def get_slope_mask(self, gdf, lower, upper=None, direction="up"):
-        """
-        Generates an array of booleans that can be used to mask
-        other arrays based on their position relative to user-defined
-        slope boundaries.
-
-        Args:
-            gdf: A geopandas.GeoDataFrame of LineString geometries
-            lower: a numeric lower bound to use for filtering slopes
-            upper: a numeric upper bound to use for filtering slopes
-            direction: one of ["up", "down", "undirected"]
-
-        Returns:
-            A pandas.Series of boolean values
-        """
-        tmp_df = gdf.copy()
-
-        # convert bounds to percentages
-        lower *= 0.01
-        if upper:
-            upper *= 0.01
-
-        # for upslope stats apply ">=" to the lower bound
-        # and "<" to the upper
-        if direction in ["up", "undirected"]:
-            lower_op = operator.ge
-            upper_op = operator.lt
-
-        # for downslope stats apply "<=" to the lower bound
-        # and ">" to the upper
-        elif direction == "down":
-            lower = -1 * lower
-            if upper:
-                upper = -1 * upper
-            lower_op = operator.le
-            upper_op = operator.gt
-
-        # for undirected stats use the absolute value of all slopes
-        if direction == "undirected":
-            tmp_df['slopes'] = np.abs(tmp_df['slopes'])
-
-        if not upper:
-            mask = tmp_df['slopes'].apply(lambda x: lower_op(x, lower))
-        else:
-            mask = tmp_df['slopes'].apply(lambda x: (
-                lower_op(x, lower)) & (upper_op(x, upper)))
-
-        return mask
 
     def clean_up(self):
         """
