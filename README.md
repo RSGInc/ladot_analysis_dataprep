@@ -233,5 +233,5 @@ The following images show the LA county OSM roads colored from green to red base
  
 # Land Use Data
 The following datasets are used by Conveyal to define "opportunities" for computing accessibilities and are not required for computing generalized costs on the travel network:
-   - **Land Use** - Additional land use data for use in Conveyal Analysis are available on the project sharepoint folder.  Their contents have been documented in the LADOT_landuse_data_inventory.xlsx file also on the sharepoint site.
-   - **Census** - The script to generate Census-based population and household data stored as shapefiles is located in the `scripts/` directory of this repository. The latest data as of March 2020 is included in the Land Use data files linked above.
+   - **Land Use** - Additional land use data for use in Conveyal Analysis are available on the project sharepoint site.  Their contents have been documented in the LADOT_landuse_data_inventory.xlsx file also on the sharepoint site.
+   - **Census** - The script to generate Census-based population and household data stored as shapefiles is located in the `scripts/` directory of this repository. The latest data as of March 2020 is included on the sharepoint site.
