@@ -1,11 +1,4 @@
-import requests
-import os
-"""Class for generating elevation profiles from DEMs
-
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+"""Uses DEMs to generate high resolution elevation profiles on-the-fly
 
   Typical usage example:
 
@@ -14,6 +7,8 @@ examples.
   edges_gdf['elevation_profiles'] = dp.get_z_trajectories(edges_gdf, dem)
 """
 
+import requests
+import os
 import zipfile
 from osgeo import gdal
 import glob
