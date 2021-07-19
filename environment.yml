@@ -105,7 +105,6 @@ dependencies:
   - openjpeg=2.3.1=hcdae239_3
   - openssl=1.1.1d=h0b31af3_0
   - osmnet=0.1.5=py_3
-  - osmnx=0.11.3=py3
   - packaging=20.0=py_0
   - palettable=3.3.0=py_0
   - pandana=0.4.4=py38h4f17bb1_0
@@ -181,6 +180,7 @@ dependencies:
   - zipp=0.6.0=py_0
   - zlib=1.2.11=h0b31af3_1006
   - zstd=1.4.4=he7fca8b_1
+  - osmnx=0.12.1
   - pip:
     - arcgis==1.7.0
     - census==0.8.13
