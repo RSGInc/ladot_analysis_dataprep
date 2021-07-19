@@ -3,7 +3,7 @@
 This repository houses Python scripts to build networks and land use data for accessibility applications.
 
 # Setting up your development environment
-1. Install Python for your OS ([Anaconda](https://www.continuum.io/downloads) strongly recommended).
+1. Install Python for your OS ([Anaconda](https://www.anaconda.com/products/individual) strongly recommended).
 2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS.
 3. Clone/download this repository and navigate to it from a command line terminal.
 4. Install dependencies:
