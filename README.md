@@ -32,9 +32,9 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
    ```
    python osm_gen_costs.py -p "Financial District, Los Angeles"
    ```
-5. To use a local .osm OSM XML file instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
+5. To use a local .osm OSM .pbf file instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
    ```
-   python osm_gen_costs.py -o <your_osm_file.osm>
+   python osm_gen_costs.py -o <your_osm_file.osm.pbf>
    ```
 6. Or if you've run this script before, you can save time by using the `-d` flag and pointing the script to the elevation data (DEM) .tif that was generated on-the-fly last time the script was run:
    ```

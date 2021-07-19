@@ -927,7 +927,7 @@ if __name__ == '__main__':
     if options.place:
         place = options.place
     place_for_fname_str = place.split(',')[0].replace(' ', '_')
-    osm_fname = '{0}.osm'.format(place_for_fname_str)
+    osm_fname = '{0}.pbf'.format(place_for_fname_str)
     dem_fname = '{0}.tif'.format(place_for_fname_str)
     out_fname = '{0}'.format(place_for_fname_str)
 
@@ -968,8 +968,10 @@ if __name__ == '__main__':
     # load from disk
     if osm_mode == 'local':
         osm_path = os.path.join(data_dir, osm_fname)
+        logger.info('Processing OSM .pbf')
         try:
-            G = ox.graph_from_file(osm_path, simplify=False, retain_all=True)
+            os.system("osmosis --read-pbf {0} --write-xml {0}.osm".format(osm_path))
+            G = ox.graph_from_file("{0}.osm".format(osm_path), simplify=False, retain_all=True)
         except OSError:
             raise OSError(
                 "Couldn't find file {0}. Make sure it is in "
@@ -1150,7 +1152,7 @@ if __name__ == '__main__':
 
         if save_as == 'pbf':
             logger.info('Converting OSM XML to .pbf')
-            os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
+            os.system("osmosis --read-xml {0}.osm --write-pbf {0}.osm.pbf".format(
                 os.path.join(data_dir, out_fname)))
             logger.info('File now available at {0}'.format(
                 os.path.join(data_dir, out_fname + '.osm.pbf')))
