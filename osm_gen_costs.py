@@ -35,12 +35,12 @@ integer_bbox = None
 # default files, filepaths, and URLs
 data_dir = './data/'
 stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
-xwalk_fname = 'Crosswalks/Crosswalks.shp'
+xwalk_fname = 'crosswalks.geojson'
 traffic_signals_fname = (
     'SignalizedIntersections_forCity/'
     'SignalizedIntersections.shp')
 bikeways_fname = 'Bikeways_As_of_7302019/Bikeways_7302019.shp'
-streetlight_data_dir = 'Big Data/OneDrive_1_1-27-2020/'
+streetlight_data_dir = 'Streetlight/'
 streetlight_data_forward = 'StreetLight_OSM_PrimaryRoads_AtoB/'
 streetlight_data_backward = 'StreetLight_OSM_PrimaryRoads_BtoA/'
 streetlight_data_glob = '*/*sa_all.csv'
