@@ -27,7 +27,7 @@ dem_mode = 'otf'
 local_infra_data = True
 local_volume_data = True
 gen_costs_on = True
-save_as = 'pbf'
+save_as = ['pbf']
 slope_stat_breaks = [[2, 4, 6], [10]]
 local_crs = 'EPSG:2770'
 integer_bbox = None
@@ -906,8 +906,8 @@ if __name__ == '__main__':
         '-p', '--place', action='store', dest='place',
         help='valid nominatim place name. default is {0}'.format(place))
     parser.add_argument(
-        '-s', '--save-as', action='store', dest='save_as',
-        choices=['osm', 'pbf', 'shp'], help='output file type')
+        '-s', '--save-as', action='append', dest='save_as', 
+        help='output file type, can be a combination of shp, osm, and pbf')
     parser.add_argument(
         '-i', '--infra-off', action='store_true', dest='infra_off',
         help='do not use infrastructure in generalized cost calculations')
@@ -926,10 +926,12 @@ if __name__ == '__main__':
     # overwrite defaults with runtime args
     if options.place:
         place = options.place
+    elif options.osm_fname:
+        place = options.osm_fname.split('.')[0]
     place_for_fname_str = place.split(',')[0].replace(' ', '_')
     osm_fname = '{0}.pbf'.format(place_for_fname_str)
     dem_fname = '{0}.tif'.format(place_for_fname_str)
-    out_fname = '{0}'.format(place_for_fname_str)
+    out_fname = '{0}-out'.format(place_for_fname_str)
 
     if options.osm_fname:
         osm_mode = 'local'
@@ -1131,16 +1133,16 @@ if __name__ == '__main__':
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs('EPSG:4326')
 
-    if save_as == 'shp':
+    if 'shp' in save_as:
         out_path = os.path.join(data_dir, out_fname)
         # turn the edges back to a graph to save as shapefile
-        logger.info('Saving graph as shapefile. This might take a while...')
-        nodes.gdf_name = 'nodes'
+        logger.info('Saving graph as shapefile to {0}. This might take a while...'.format(out_path))
+        # nodes.gdf_name = 'nodes'
         # ox.save_gdf_shapefile(nodes, 'nodes', out_path)
         edges.gdf_name = 'edges'
         ox.save_gdf_shapefile(edges, 'edges', out_path)
 
-    elif save_as in ['osm', 'pbf']:
+    if 'osm' in save_as or 'pbf' in save_as:
         logger.info('Saving graph as OSM XML. This might take a while...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
@@ -1150,15 +1152,16 @@ if __name__ == '__main__':
             edge_attrs=ox.settings.osm_xml_way_attrs,
             merge_edges=False)
 
-        if save_as == 'pbf':
+        if 'pbf' in save_as:
             logger.info('Converting OSM XML to .pbf')
             os.system("osmosis --read-xml {0}.osm --write-pbf {0}.osm.pbf".format(
                 os.path.join(data_dir, out_fname)))
             logger.info('File now available at {0}'.format(
                 os.path.join(data_dir, out_fname + '.osm.pbf')))
+
     else:
         raise ValueError(
-            "{0} is not a valid output file type. See --help for more "
+            "{0} are not valid output file types. See --help for more "
             "details.".format(save_as))
 
     # remove tmp dir

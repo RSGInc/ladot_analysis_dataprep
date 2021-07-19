@@ -32,19 +32,19 @@ The **osm_gen_costs.py** script is designed to generate OSM-based, generalized c
    ```
    python osm_gen_costs.py -p "Financial District, Los Angeles"
    ```
-5. To use a local .osm OSM .pbf file instead of pulling OSM data from on-the-fly, you can use the `-o` flag:
+5. To use a local .osm OSM .pbf file instead of pulling OSM data from on-the-fly, you can use the `-o` flag (or `--osm-filename`):
    ```
    python osm_gen_costs.py -o <your_osm_file.osm.pbf>
    ```
-6. Or if you've run this script before, you can save time by using the `-d` flag and pointing the script to the elevation data (DEM) .tif that was generated on-the-fly last time the script was run:
+6. Or if you've run this script before, you can save time by using the `-d` flag (or `--dem-filename`) and pointing the script to the elevation data (DEM) .tif that was generated on-the-fly last time the script was run:
    ```
    python osm_gen_costs.py -d <your_dem_file.tif>
    ```
-7. If you would rather store your output data ESRI shapefiles instead of .pbf, simply use the `-s` flag and the script will generate two sets of shapefiles for the node and edge data. 
+7. If you want your output data as ESRI shapefiles instead of (or in addition to) .pbf, simply use the `-s` flag (or `--save-as`) and the script will generate a shapefile for the edge data.
    ```
-   python osm_gen_costs.py -s shp
+   python osm_gen_costs.py -s shp (-s pbf)
    ```
-8. The script will then generate an OSM XML file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
+8. The script will then generate an OSM file with the computed attributes stored as new OSM way tags. The following new tags are created by default:
    - `speed_peak:forward` -- speed during hours of peak traffic in the forward direction 
    - `speed_peak:backward` -- speed during hours of peak traffic in the reverse direction 
    - `speed_offpeak:forward` -- speed during offpeak traffic hours in the forward direction
