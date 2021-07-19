@@ -972,7 +972,7 @@ if __name__ == '__main__':
         osm_path = os.path.join(data_dir, osm_fname)
         logger.info('Processing OSM .pbf')
         try:
-            os.system("osmosis --read-pbf {0} --write-xml {0}.osm".format(osm_path))
+            os.system("osmosis --read-pbf {0} --tf accept-ways highway=* --used-node --write-xml {0}.osm".format(osm_path))
             G = ox.graph_from_file("{0}.osm".format(osm_path), simplify=False, retain_all=True)
         except OSError:
             raise OSError(
