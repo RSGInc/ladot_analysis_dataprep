@@ -4,15 +4,17 @@ This repository houses Python scripts to build networks and land use data for ac
 
 # Setting up your development environment
 1. Install Python for your OS ([Anaconda](https://www.anaconda.com/products/individual) strongly recommended).
-2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS.
+2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS. Osmosis requires Java (how to confirm you have Java installed: on a [Mac](https://justinbagley.rbind.io/2020/01/05/how-to-check-java-version-on-mac/) or [PC](https://www.howtogeek.com/717330/how-to-check-your-java-version-on-windows-10/))
 3. Download and unzip this repository (using the green "Code" button above)
-4. Navigate to the unzipped repository from a command line terminal ("shell"). On a Mac, you can use the built-in Terminal for your shell. On Windows 10, consider installing [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and using the resulting Bash on Ubuntu on Windows. If you are unfamiliar with terminal commands, SoftwareCarpentry has useful guides, including on [setup](http://swcarpentry.github.io/shell-novice/setup.html), [core concepts](http://swcarpentry.github.io/shell-novice/01-intro/index.html), and [navigation](http://swcarpentry.github.io/shell-novice/02-filedir/index.html).
+4. Navigate to the unzipped repository from a command line terminal ("shell"). In Mac OSX, you can use the built-in Terminal for your shell. In Windows 10, consider installing [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)*. If you are unfamiliar with terminal commands, SoftwareCarpentry has useful guides, including on [setup](http://swcarpentry.github.io/shell-novice/setup.html), [core concepts](http://swcarpentry.github.io/shell-novice/01-intro/index.html), and [navigation](http://swcarpentry.github.io/shell-novice/02-filedir/index.html).
 5. Install dependencies with the following shell command:
 
    ```conda env create -f environment.yml```
 6. Activate conda environment:
 
    ```conda activate gencosts```
+
+* If you use Windows Subsystem for Linux, make sure that you complete the steps above following instructions for Linux, using Bash on Ubuntu on Windows for your shell.
 
 # Network
 The **osm_gen_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
