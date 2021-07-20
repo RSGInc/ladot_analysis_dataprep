@@ -14,7 +14,7 @@ This repository houses Python scripts to build networks and land use data for ac
 
    ```conda activate gencosts```
 
-* If you use Windows Subsystem for Linux, make sure that you complete the steps above following instructions for Linux, using Bash on Ubuntu on Windows for your shell.
+ * If you use Windows Subsystem for Linux, make sure that you complete the steps above following instructions for Linux, using Bash on Ubuntu on Windows for your shell.
 
 # Network
 The **osm_gen_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
