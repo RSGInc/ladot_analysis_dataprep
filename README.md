@@ -4,24 +4,37 @@ This repository houses Python scripts to build networks and land use data for ac
 
 # Setting up your development environment
 
-These instructions assume working knowledge of a command line terminal ("shell"). In Mac OSX, you can use the built-in Terminal for your shell. In Windows 10, consider installing [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and completing the steps below following instructions for Linux, using Bash on Ubuntu on Windows for your shell. If you are unfamiliar with shell commands, SoftwareCarpentry has useful guides, including on [setup](http://swcarpentry.github.io/shell-novice/setup.html), [core concepts](http://swcarpentry.github.io/shell-novice/01-intro/index.html), and [navigation](http://swcarpentry.github.io/shell-novice/02-filedir/index.html).
+These instructions assume working knowledge of a command line terminal (aka "shell"). In macOS, you can use the built-in Terminal for your shell. In Windows 10, consider installing [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and completing this setup following instructions for Linux, using Bash on Ubuntu on Windows for your shell. If you are unfamiliar with shell commands, SoftwareCarpentry has useful guides, including on setup (at the bottom of [this page](http://swcarpentry.github.io/shell-novice/setup.html)), [core concepts](http://swcarpentry.github.io/shell-novice/01-intro/index.html), and [navigation](http://swcarpentry.github.io/shell-novice/02-filedir/index.html).
+
+In the steps below, to enter a command shown like this,
+
+``` example command```,
+
+type it or copy/paste it into your shell then hit the Enter key.
+
 
 1. Install Python for your OS ([Anaconda](https://www.anaconda.com/products/individual) strongly recommended).
-2. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS. 
+2. Download and unzip this repository (using the green "Code" button above)
+3. Navigate to the unzipped repository from a shell. In macOS Finder, you can right click on the folder for this repository (e.g. `ladot_analysis_dataprep-training-update`) and select "New Terminal at Folder".
+4. Install [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis/Installation) for your OS. 
 * Mac/Linux
-   *  Confirm you have Java installed ([instructions](https://justinbagley.rbind.io/2020/01/05/how-to-check-java-version-on-mac/))
+   *  Confirm you have Java installed (use the shell command `java -version`, or follow these [instructions](https://justinbagley.rbind.io/2020/01/05/how-to-check-java-version-on-mac/))
    *  Download .zip file of latest osmosis [release](https://github.com/openstreetmap/osmosis/releases)
-   *  Unzip the downloaded file and follow the Unix/Linux instructions in the readme file for adding a link to osmosis to your path. If you unzip to a folder called appdir, use two shell commands `PATH=$PATH:~/bin`, followed by `ln -s appdir/bin/osmosis ~/bin/osmosis`.
+   *  Unzip the downloaded file and copy the contents to the folder for this repository (e.g. `ladot_analysis_dataprep-training-update`).
+   *  Make osmosis executable, using the command `chmod u+x bin/osmosis` (per these [instructions](https://support.apple.com/guide/terminal/make-a-file-executable-apdd100908f-06b3-4e63-8a87-32e71241bab4/mac))
+   *  Add osmosis to your executable path with a symbolic link ("symlink), using the command `sudo ln -s bin/osmosis ~/bin/osmosis`
 * PC 
   * Follow the instructions [here](https://wiki.openstreetmap.org/wiki/Osmosis/Quick_Install_(Windows))
-3. Download and unzip this repository (using the green "Code" button above)
-4. Navigate to the unzipped repository from a shell.
 5. Install dependencies with the following shell command:
 
    ```conda env create -f environment.yml```
-6. Activate conda environment:
+6. Activate conda environment with the following shell command:
 
    ```conda activate gencosts```
+   
+To test whether your development environment is configured correctly, you can run a shell command following the instructions below. For example,
+
+```python osm_gen_costs.py --dem-filename merged.tif --osm-filename van-nuys.osm.pbf --save-as shp --save-as pbf```
 
 # Network
 The **osm_gen_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
