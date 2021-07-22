@@ -22,7 +22,7 @@ type it or copy/paste it into your shell then hit the Enter key.
    *  Download .zip file of latest osmosis [release](https://github.com/openstreetmap/osmosis/releases)
    *  Unzip the downloaded file and copy the contents to the folder for this repository (e.g. `ladot_analysis_dataprep-training-update`).
    *  Make osmosis executable, using the command `chmod u+x bin/osmosis` (per these [instructions](https://support.apple.com/guide/terminal/make-a-file-executable-apdd100908f-06b3-4e63-8a87-32e71241bab4/mac))
-   *  Add osmosis to your executable path with a symbolic link ("symlink), using the command `sudo ln -s bin/osmosis ~/bin/osmosis`
+   *  Add osmosis to your executable path with a symbolic link ("symlink"), using the command `sudo ln -s bin/osmosis ~/bin/osmosis`
 * PC 
   * Follow the instructions [here](https://wiki.openstreetmap.org/wiki/Osmosis/Quick_Install_(Windows))
 5. Install dependencies with the following shell command:
