@@ -28,6 +28,7 @@ type it or copy/paste it into your shell then hit the Enter key.
 5. Install dependencies with the following shell command:
 
    ```conda env create -f environment.yml```
+
 6. Activate conda environment with the following shell command:
 
    ```conda activate gencosts```
@@ -35,6 +36,8 @@ type it or copy/paste it into your shell then hit the Enter key.
 To test whether your development environment is configured correctly, you can run a shell command following the instructions below. For example,
 
 ```python osm_gen_costs.py --dem-filename merged.tif --osm-filename van-nuys.osm.pbf --save-as shp --save-as pbf```
+
+If you are running mac OS Big Sur, you may encounter a failure running the steps above due to a [known issue with a dependency](https://github.com/conda-forge/shapely-feedstock/issues/53). To resolve, edit the file `/Users/<username>/opt/anaconda3/envs/gencosts/lib/python3.8/site-packages/shapely/geos.py`and replace `free = load_dll('c').free` (around line 138) with `free = load_dll('c', fallbacks=["/usr/lib/libSystem.dylib"]).free`
 
 # Network
 The **osm_gen_costs.py** script is designed to generate OSM-based, generalized cost-weighted networks for bicycle and pedestrian accessibility. The generalized cost formulas used here are an adaptation of [Broach (2016)](https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=3707&context=open_access_etds).  
