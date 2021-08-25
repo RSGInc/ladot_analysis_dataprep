@@ -898,7 +898,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-o', '--osm-filename', action='store', dest='osm_fname',
-        help='local OSM XML file to use instead of grabbing data on-the-fly')
+        help='local OSM .pbf or .xml file to use instead of grabbing data on-the-fly')
     parser.add_argument(
         '-d', '--dem-filename', action='store', dest='dem_fname',
         help='local DEM file to use instead of grabbing data on-the-fly')
@@ -970,14 +970,18 @@ if __name__ == '__main__':
     # load from disk
     if osm_mode == 'local':
         osm_path = os.path.join(data_dir, osm_fname)
-        logger.info('Processing OSM .pbf')
-        try:
-            os.system("osmosis --read-pbf {0} --tf accept-ways highway=* --used-node --write-xml {0}.osm".format(osm_path))
-            G = ox.graph_from_file("{0}.osm".format(osm_path), simplify=False, retain_all=True)
-        except OSError:
-            raise OSError(
-                "Couldn't find file {0}. Make sure it is in "
-                "the data directory ({1}).".format(osm_fname, data_dir))
+        if osm_fname.split('.')[-1].lower() == 'xml':
+            logger.info('Processing OSM .xml')
+            G = ox.graph_from_file(osm_path, simplify=False, retain_all=True)
+        else: 
+            logger.info('Processing OSM .pbf')
+            try:
+                os.system("osmosis --read-pbf {0} --tf accept-ways highway=* --used-node --write-xml {0}.osm".format(osm_path))
+                G = ox.graph_from_file("{0}.osm".format(osm_path), simplify=False, retain_all=True)
+            except OSError:
+                raise OSError(
+                    "Couldn't find or process file {0}. Make sure valid a valid OSM .xml or .pbf file is in "
+                    "the data directory ({1}).".format(osm_fname, data_dir))
 
     # or pull it from the web "on-the-fly"
     elif osm_mode == 'otf':
