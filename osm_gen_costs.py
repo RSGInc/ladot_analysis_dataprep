@@ -263,16 +263,15 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
         if bikeways.crs != edges_gdf.crs:
             bikeways = bikeways.to_crs(edges_gdf.crs)
 
-        # NOTE: There are two options below. The higher accuracy one  can take ~2 hours to run.
+        # NOTE: There are two options below. The higher accuracy one can take ~2 hours to run.
 
         # Higher accuracy: extract points from lines at intervals  of 5m
-        # bikeways['points'] = bikeways['geometry'].apply(
-        #    lambda x: ox.redistribute_vertices(x, 5))
+        bikeways['points'] = bikeways['geometry'].apply(
 
         # Lower accuracy: 9 sample points for each edge
-        bikeways['points'] = bikeways['geometry'].apply(
-             lambda x: [x.interpolate(i, normalized=True) for i in [
-                 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
+        # bikeways['points'] = bikeways['geometry'].apply(
+        #     lambda x: [x.interpolate(i, normalized=True) for i in [
+        #         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
 
         # store points in a new dataframe.
         bike_points = pd.DataFrame()
