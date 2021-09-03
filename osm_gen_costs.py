@@ -267,6 +267,7 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
 
         # Higher accuracy: extract points from lines at intervals  of 5m
         bikeways['points'] = bikeways['geometry'].apply(
+            lambda x: ox.redistribute_vertices(x, 5))
 
         # Lower accuracy: 9 sample points for each edge
         # bikeways['points'] = bikeways['geometry'].apply(
