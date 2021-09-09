@@ -27,7 +27,7 @@ dem_mode = 'otf'
 local_infra_data = True
 local_volume_data = True
 gen_costs_on = True
-save_as = 'pbf'
+save_as = ['pbf']
 slope_stat_breaks = [[2, 4, 6], [10]]
 local_crs = 'EPSG:2770'
 integer_bbox = None
@@ -35,12 +35,12 @@ integer_bbox = None
 # default files, filepaths, and URLs
 data_dir = './data/'
 stop_signs_fname = 'Stop_and_Yield_Signs/Stop_and_Yield_Signs.shp'
-xwalk_fname = 'Crosswalks/Crosswalks.shp'
+xwalk_fname = 'crosswalks.geojson'
 traffic_signals_fname = (
     'SignalizedIntersections_forCity/'
     'SignalizedIntersections.shp')
 bikeways_fname = 'Bikeways_As_of_7302019/Bikeways_7302019.shp'
-streetlight_data_dir = 'Big Data/OneDrive_1_1-27-2020/'
+streetlight_data_dir = 'Streetlight/'
 streetlight_data_forward = 'StreetLight_OSM_PrimaryRoads_AtoB/'
 streetlight_data_backward = 'StreetLight_OSM_PrimaryRoads_BtoA/'
 streetlight_data_glob = '*/*sa_all.csv'
@@ -263,16 +263,13 @@ def assign_bike_infra(edges_gdf, local_infra_data=True):
         if bikeways.crs != edges_gdf.crs:
             bikeways = bikeways.to_crs(edges_gdf.crs)
 
-        # extract points from lines at intervals  of 5m
-        # NOTE: This process can take ~2 hours to run. If you don't
-        # care as much about 100% accuracy of bike matching, you can
-        # replace vertex redistribution with the interpolation that is
-        # commented out below. This will just create 9 points for each
-        # edges instead of sampling every 5m.
+        # NOTE: There are two options below. The higher accuracy one can take ~2 hours to run.
 
+        # Higher accuracy: extract points from lines at intervals  of 5m
         bikeways['points'] = bikeways['geometry'].apply(
             lambda x: ox.redistribute_vertices(x, 5))
 
+        # Lower accuracy: 9 sample points for each edge
         # bikeways['points'] = bikeways['geometry'].apply(
         #     lambda x: [x.interpolate(i, normalized=True) for i in [
         #         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]])
@@ -901,7 +898,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-o', '--osm-filename', action='store', dest='osm_fname',
-        help='local OSM XML file to use instead of grabbing data on-the-fly')
+        help='local OSM .pbf or .xml file to use instead of grabbing data on-the-fly')
     parser.add_argument(
         '-d', '--dem-filename', action='store', dest='dem_fname',
         help='local DEM file to use instead of grabbing data on-the-fly')
@@ -909,8 +906,8 @@ if __name__ == '__main__':
         '-p', '--place', action='store', dest='place',
         help='valid nominatim place name. default is {0}'.format(place))
     parser.add_argument(
-        '-s', '--save-as', action='store', dest='save_as',
-        choices=['osm', 'pbf', 'shp'], help='output file type')
+        '-s', '--save-as', action='append', dest='save_as', 
+        help='output file type, can be a combination of shp, osm, and pbf')
     parser.add_argument(
         '-i', '--infra-off', action='store_true', dest='infra_off',
         help='do not use infrastructure in generalized cost calculations')
@@ -929,10 +926,12 @@ if __name__ == '__main__':
     # overwrite defaults with runtime args
     if options.place:
         place = options.place
+    elif options.osm_fname:
+        place = options.osm_fname.split('.')[0]
     place_for_fname_str = place.split(',')[0].replace(' ', '_')
-    osm_fname = '{0}.osm'.format(place_for_fname_str)
+    osm_fname = '{0}.pbf'.format(place_for_fname_str)
     dem_fname = '{0}.tif'.format(place_for_fname_str)
-    out_fname = '{0}'.format(place_for_fname_str)
+    out_fname = '{0}-out'.format(place_for_fname_str)
 
     if options.osm_fname:
         osm_mode = 'local'
@@ -971,12 +970,18 @@ if __name__ == '__main__':
     # load from disk
     if osm_mode == 'local':
         osm_path = os.path.join(data_dir, osm_fname)
-        try:
+        if osm_fname.split('.')[-1].lower() == 'xml':
+            logger.info('Processing OSM .xml')
             G = ox.graph_from_file(osm_path, simplify=False, retain_all=True)
-        except OSError:
-            raise OSError(
-                "Couldn't find file {0}. Make sure it is in "
-                "the data directory ({1}).".format(osm_fname, data_dir))
+        else: 
+            logger.info('Processing OSM .pbf')
+            try:
+                os.system("osmosis --read-pbf {0} --tf accept-ways highway=* --used-node --write-xml {0}.osm".format(osm_path))
+                G = ox.graph_from_file("{0}.osm".format(osm_path), simplify=False, retain_all=True)
+            except OSError:
+                raise OSError(
+                    "Couldn't find or process file {0}. Make sure valid a valid OSM .xml or .pbf file is in "
+                    "the data directory ({1}).".format(osm_fname, data_dir))
 
     # or pull it from the web "on-the-fly"
     elif osm_mode == 'otf':
@@ -1132,16 +1137,16 @@ if __name__ == '__main__':
     # project the edges back to lat/lon coordinate system
     edges = edges.to_crs('EPSG:4326')
 
-    if save_as == 'shp':
+    if 'shp' in save_as:
         out_path = os.path.join(data_dir, out_fname)
         # turn the edges back to a graph to save as shapefile
-        logger.info('Saving graph as shapefile. This might take a while...')
-        nodes.gdf_name = 'nodes'
+        logger.info('Saving graph as shapefile to {0}. This might take a while...'.format(out_path))
+        # nodes.gdf_name = 'nodes'
         # ox.save_gdf_shapefile(nodes, 'nodes', out_path)
         edges.gdf_name = 'edges'
         ox.save_gdf_shapefile(edges, 'edges', out_path)
 
-    elif save_as in ['osm', 'pbf']:
+    if 'osm' in save_as or 'pbf' in save_as:
         logger.info('Saving graph as OSM XML. This might take a while...')
         ox.save_as_osm(
             [nodes, edges], filename=out_fname + '.osm', folder=data_dir,
@@ -1151,15 +1156,16 @@ if __name__ == '__main__':
             edge_attrs=ox.settings.osm_xml_way_attrs,
             merge_edges=False)
 
-        if save_as == 'pbf':
+        if 'pbf' in save_as:
             logger.info('Converting OSM XML to .pbf')
-            os.system("osmconvert {0}.osm -o={0}.osm.pbf".format(
+            os.system("osmosis --read-xml {0}.osm --write-pbf {0}.osm.pbf".format(
                 os.path.join(data_dir, out_fname)))
             logger.info('File now available at {0}'.format(
                 os.path.join(data_dir, out_fname + '.osm.pbf')))
+
     else:
         raise ValueError(
-            "{0} is not a valid output file type. See --help for more "
+            "{0} are not valid output file types. See --help for more "
             "details.".format(save_as))
 
     # remove tmp dir
