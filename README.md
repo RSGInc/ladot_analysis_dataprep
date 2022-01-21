@@ -1,6 +1,6 @@
 # LADOT Analysis Tool Data Prep
 
-This repository houses Python scripts to build networks and land use data for accessibility applications.
+This repository houses Python scripts to build networks and land use data for accessibility applications. Note for LADOT users: the Conveyal team has configured an AWS image to avoid repeating the setup and dependency installation steps below. If you would like assistance updating a generalized cost network, please contact your support team.
 
 # Setting up your development environment
 
